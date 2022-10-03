@@ -1,3 +1,26 @@
+/*
+nextTick方法：
+维护一个内部和外部都相同的异步方法的任务队列
+可用于：
+1. 实现多次更改数据只会更新一次的操作
+2. 获取数据修改后的真实dom(因为内部实现视图渲染实在异步任务队列中进行的，同步只能获取修改前)
+优雅降级处理顺序：
+Promise   =>  MutationObserver  =>  setImmediate (IE) =>  setTimeout
+实现方法：
+在调用nextTick()时会将回调同步推入callbacks队列
+
+准备一个初始值为false的标志位pending                目的是标记已将flushCallbacks加入任务队列)
+准备一个回调为flushCallbacks的异步方法timerFunc     目的是调用此异步方法时,会将flushCallbacks放入任务队列
+
+flushCallbacks作用：执行callbacks中所有回调的任务，清空calbacks，并将标志位置为false
+timerFunc作用：将flushCallbacks压入任务队列
+标志位为false时执行timerFunc并置为true，让任务队列中添加上flushCallbacks
+标志位为true时不处理
+
+这样，调用所有nextTick()方法时，都会同步将所有回调推入队列，并且所有回调都会在所有同步代码执行完毕后依次执行
+
+*/
+
 /* globals MutationObserver */
 
 import { noop } from 'shared/util'

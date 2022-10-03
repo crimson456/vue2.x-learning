@@ -35,6 +35,9 @@ export function initMixin(Vue: typeof Component) {
     // effect scope
     vm._scope = new EffectScope(true /* detached */)
     vm._scope._vm = true
+
+    //合并options
+
     // merge options
     if (options && options._isComponent) {
       // optimize internal component instantiation
@@ -48,6 +51,8 @@ export function initMixin(Vue: typeof Component) {
         vm
       )
     }
+
+    //vm._renderProxy的定义
     /* istanbul ignore else */
     if (__DEV__) {
       initProxy(vm)
@@ -56,13 +61,24 @@ export function initMixin(Vue: typeof Component) {
     }
     // expose real self
     vm._self = vm
+    //创建一些生命周期相关的属性，组件的父子关系的初始化
     initLifecycle(vm)
+    //???
     initEvents(vm)
+    //???
     initRender(vm)
+
+    //执行beforeCreate钩子中的函数
     callHook(vm, 'beforeCreate', undefined, false /* setContext */)
+    //???
     initInjections(vm) // resolve injections before data/props
-    initState(vm)
+    //挂载 数据(状态) 如data、method、computed
+    initState(vm) 
+    //???
     initProvide(vm) // resolve provide after data/props
+
+
+    //执行created钩子中的函数
     callHook(vm, 'created')
 
     /* istanbul ignore if */
@@ -73,6 +89,8 @@ export function initMixin(Vue: typeof Component) {
     }
 
     if (vm.$options.el) {
+      //实际调用：mountComponent()
+      //核心逻辑：vm._update(vm._render(), hydrating)
       vm.$mount(vm.$options.el)
     }
   }

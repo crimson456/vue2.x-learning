@@ -1,3 +1,15 @@
+/*
+mergeOptions()：通过自定义的策略合并两个选项
+
+strats的成员名对应要合并的两个选项的名称，成员值为合并策略
+
+
+
+
+
+*/
+
+
 import config from '../config'
 import { warn } from './debug'
 import { set } from '../observer/index'
@@ -82,7 +94,7 @@ function mergeData(
 /**
  * Data
  */
-export function mergeDataOrFn(
+export function mergeDataOrFn(  
   parentVal: any,
   childVal: any,
   vm?: Component
@@ -178,13 +190,10 @@ LIFECYCLE_HOOKS.forEach(hook => {
   strats[hook] = mergeLifecycleHook
 })
 
-/**
- * Assets
- *
- * When a vm is present (instance creation), we need to do
- * a three-way merge between constructor options, instance
- * options and parent options.
- */
+
+/*
+合并conponent、directive、filter字段时的策略：返回一个以父选项为原型，子选项为对象值的对象
+*/
 function mergeAssets(
   parentVal: Object | null,
   childVal: Object | null,
@@ -264,9 +273,8 @@ strats.props =
     }
 strats.provide = mergeDataOrFn
 
-/**
- * Default strategy.
- */
+
+//默认策略：以儿子为主
 const defaultStrat = function (parentVal: any, childVal: any): any {
   return childVal === undefined ? parentVal : childVal
 }

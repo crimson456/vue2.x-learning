@@ -1,8 +1,15 @@
+/*
+挂载Vue.use()
+Vue.use():挂载插件
+
+*/
+
 import type { GlobalAPI } from 'types/global-api'
 import { toArray, isFunction } from '../util/index'
 
 export function initUse(Vue: GlobalAPI) {
   Vue.use = function (plugin: Function | any) {
+    //查询是否重复挂载
     const installedPlugins =
       this._installedPlugins || (this._installedPlugins = [])
     if (installedPlugins.indexOf(plugin) > -1) {

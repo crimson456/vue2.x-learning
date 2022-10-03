@@ -67,8 +67,13 @@ export function lifecycleMixin(Vue: typeof Component) {
     vm._vnode = vnode
     // Vue.prototype.__patch__ is injected in entry points
     // based on the rendering backend used.
+
+    //判断是否是第一次渲染，是则使用真实DOM，不是则使用上次的虚拟DOM进行patch
+    
+
     if (!prevVnode) {
       // initial render
+      //__patch__()会根据是否在浏览器端返回值，一般同patch()方法，patch()方法会对比两个虚拟节点进行最小量更新
       vm.$el = vm.__patch__(vm.$el, vnode, hydrating, false /* removeOnly */)
     } else {
       // updates
@@ -390,6 +395,9 @@ export function deactivateChildComponent(vm: Component, direct?: boolean) {
   }
 }
 
+
+
+//callHook():执行对应名称的生命周期钩子（定义后存放在vm.$options中）
 export function callHook(
   vm: Component,
   hook: string,
@@ -397,6 +405,7 @@ export function callHook(
   setContext = true
 ) {
   // #7573 disable dep collection when invoking lifecycle hooks
+  //在执行生命周期钩子时停止依赖收集，将Dep.target置为undefined后调用对应的值就不会触发依赖收集了
   pushTarget()
   const prev = currentInstance
   setContext && setCurrentInstance(vm)

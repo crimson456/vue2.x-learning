@@ -1,3 +1,15 @@
+/*
+Vue.component()：调用Vue.extend()将定义处理为构造函数，并在Vue.options.components上挂载组件的构造函数
+
+
+Vue.directive
+Vue.filter
+同理也是处理后挂载在Vue.options上
+
+*/
+
+
+
 import { ASSET_TYPES } from 'shared/constants'
 import type { GlobalAPI } from 'types/global-api'
 import { isFunction, isPlainObject, validateComponentName } from '../util/index'

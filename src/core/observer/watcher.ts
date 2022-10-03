@@ -250,6 +250,7 @@ export default class Watcher implements DepTarget {
   /**
    * Depend on all deps collected by this watcher.
    */
+  //让栈的上一级watcher收集所有此watcher的dep
   depend() {
     let i = this.deps.length
     while (i--) {

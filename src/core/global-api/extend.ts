@@ -1,3 +1,15 @@
+/*
+挂载Vue.extend()
+Vue.extend()：返回一个Vue的子类Sub
+
+
+
+
+
+
+
+*/
+
 import { ASSET_TYPES } from 'shared/constants'
 import type { Component } from 'types/component'
 import type { GlobalAPI } from 'types/global-api'
@@ -35,7 +47,9 @@ export function initExtend(Vue: GlobalAPI) {
     const Sub = function VueComponent(this: any, options: any) {
       this._init(options)
     } as unknown as typeof Component
+    //Sub.prototype.__proto__ == Super.prototype,将原型挂在父组件的原型链下
     Sub.prototype = Object.create(Super.prototype)
+    //此处会将子组件的constructor变更为Sub()，如不添加此句，扩展的子类在的constructor为Vue()，实例化时合并options会出错
     Sub.prototype.constructor = Sub
     Sub.cid = cid++
     Sub.options = mergeOptions(Super.options, extendOptions)
@@ -51,6 +65,7 @@ export function initExtend(Vue: GlobalAPI) {
       initComputed(Sub)
     }
 
+    // 定义子组件上的全局API
     // allow further extension/mixin/plugin usage
     Sub.extend = Super.extend
     Sub.mixin = Super.mixin

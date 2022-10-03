@@ -1,3 +1,21 @@
+/*
+initstate()：(依顺序)
+  initProps()     挂载到vm._props，并代理在vm上
+  initSetup()
+  initMethods()   挂载到vm上
+  initData()      挂载到vm._data，并代理在vm上
+  initComputed()  挂载到vm上
+  initWatch()     调用Vue.prototype.$watch处理
+
+stateMixin():
+  Vue.prototype.$data     从vm._data上取
+  Vue.prototype.$props    从vm._props上取
+  Vue.prototype.$set
+  Vue.prototype.$delete
+  Vue.prototype.$watch 
+
+*/
+
 import config from '../config'
 import Watcher from '../observer/watcher'
 import Dep, { pushTarget, popTarget } from '../observer/dep'
@@ -39,6 +57,7 @@ const sharedPropertyDefinition = {
   set: noop
 }
 
+//用于将vm._data代理到vm上
 export function proxy(target: Object, sourceKey: string, key: string) {
   sharedPropertyDefinition.get = function proxyGetter() {
     return this[sourceKey][key]
@@ -51,12 +70,14 @@ export function proxy(target: Object, sourceKey: string, key: string) {
 
 export function initState(vm: Component) {
   const opts = vm.$options
+  //挂载props
   if (opts.props) initProps(vm, opts.props)
 
   // Composition API
   initSetup(vm)
-
+  //挂载method
   if (opts.methods) initMethods(vm, opts.methods)
+  //挂载data
   if (opts.data) {
     initData(vm)
   } else {
@@ -68,6 +89,13 @@ export function initState(vm: Component) {
     initWatch(vm, opts.watch)
   }
 }
+
+/*
+初始化props具体实现
+
+
+*/
+
 
 function initProps(vm: Component, propsOptions: Object) {
   const propsData = vm.$options.propsData || {}
@@ -118,9 +146,14 @@ function initProps(vm: Component, propsOptions: Object) {
   }
   toggleObserving(true)
 }
+/*
+初始化data具体实现
 
+
+*/
 function initData(vm: Component) {
   let data: any = vm.$options.data
+  //data字段是函数返回值或者
   data = vm._data = isFunction(data) ? getData(data, vm) : data || {}
   if (!isPlainObject(data)) {
     data = {}
@@ -171,6 +204,12 @@ export function getData(data: Function, vm: Component): any {
     popTarget()
   }
 }
+/*
+初始化computed具体实现
+为每一个computed的属性的getter创建一个计算属性watcher
+
+*/
+
 
 const computedWatcherOptions = { lazy: true }
 
@@ -246,7 +285,10 @@ export function defineComputed(
   }
   Object.defineProperty(target, key, sharedPropertyDefinition)
 }
+/*
+computed中getter流程
 
+*/
 function createComputedGetter(key) {
   return function computedGetter() {
     const watcher = this._computedWatchers && this._computedWatchers[key]
@@ -269,13 +311,18 @@ function createComputedGetter(key) {
     }
   }
 }
-
+//服务端渲染时计算属性作普通getter
 function createGetterInvoker(fn) {
   return function computedGetter() {
     return fn.call(this, this)
   }
 }
 
+/*
+初始化methods具体实现
+
+
+*/
 function initMethods(vm: Component, methods: Object) {
   const props = vm.$options.props
   for (const key in methods) {
@@ -302,7 +349,11 @@ function initMethods(vm: Component, methods: Object) {
     vm[key] = typeof methods[key] !== 'function' ? noop : bind(methods[key], vm)
   }
 }
+/*
+初始watch具体实现
 
+
+*/
 function initWatch(vm: Component, watch: Object) {
   for (const key in watch) {
     const handler = watch[key]

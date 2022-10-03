@@ -1,3 +1,12 @@
+/*
+为所有更新视图的Watcher实例维护一个队列
+当有Watcher实例调用update方法时，将该实例推入队列中，并在nextTick方法中异步执行
+推入队列中时会对id进行监测防重(在多次修改数据调用update方法时最终只渲染一次，防抖效果)
+
+waiting标志位用于让多次更改数据的Watcher的更新都在任务队列中执行
+
+*/
+
 import type Watcher from './watcher'
 import config from '../config'
 import Dep from './dep'
@@ -164,11 +173,12 @@ function callActivatedHooks(queue) {
  * pushed when the queue is being flushed.
  */
 export function queueWatcher(watcher: Watcher) {
+  //去重
   const id = watcher.id
   if (has[id] != null) {
     return
   }
-
+  
   if (watcher === Dep.target && watcher.noRecurse) {
     return
   }
@@ -177,6 +187,7 @@ export function queueWatcher(watcher: Watcher) {
   if (!flushing) {
     queue.push(watcher)
   } else {
+    // 如果处于刷新队列函数中的处理，将对应watcher插入在相应位置上
     // if already flushing, splice the watcher based on its id
     // if already past its id, it will be run next immediately.
     let i = queue.length - 1

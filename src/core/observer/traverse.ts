@@ -35,6 +35,7 @@ function _traverse(val: any, seen: SimpleSet) {
   }
   if (isA) {
     i = val.length
+    //此处读取val[i]值时触发深更深一层的getter
     while (i--) _traverse(val[i], seen)
   } else if (isRef(val)) {
     _traverse(val.value, seen)
