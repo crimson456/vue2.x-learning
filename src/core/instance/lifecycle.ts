@@ -1,3 +1,19 @@
+/* 
+
+initLifecycle():挂载一些生命周期相关的属性
+  vm.$root 
+  vm.$parent 
+  vm.$children 
+  vm.$refs 
+  vm._provided 
+  vm._watcher 
+  vm._inactive 
+  vm._directInactive 
+  vm._isMounted 
+  vm._isDestroyed 
+  vm._isBeingDestroyed 
+
+ */
 import config from '../config'
 import Watcher, { WatcherOptions } from '../observer/watcher'
 import { mark, measure } from '../util/perf'

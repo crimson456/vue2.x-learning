@@ -29,6 +29,7 @@ export function def(obj: Object, key: string, val: any, enumerable?: boolean) {
 /**
  * Parse simple path.
  */
+//将形如  obj.c.d  的对象取值路径转化为取值函数
 const bailRE = new RegExp(`[^${unicodeRegExp.source}.$_\\d]`)
 export function parsePath(path: string): any {
   if (bailRE.test(path)) {

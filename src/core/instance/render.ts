@@ -1,3 +1,11 @@
+/*
+initRender():
+
+  vm.$attrs       
+  vm.$listeners   
+
+
+*/
 import {
   warn,
   nextTick,

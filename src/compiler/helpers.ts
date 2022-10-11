@@ -177,6 +177,8 @@ export function getRawBindingAttr(el: ASTElement, name: string) {
   )
 }
 
+
+//获取动态绑定的属性值(:xxx或v-bind:xxx)并删除，第三个参数表示是否获取静态定义的属性值
 export function getBindingAttr(
   el: ASTElement,
   name: string,
@@ -198,6 +200,7 @@ export function getBindingAttr(
 // doesn't get processed by processAttrs.
 // By default it does NOT remove it from the map (attrsMap) because the map is
 // needed during codegen.
+//从attrsList中获取静态属性名的属性值并删除，第三个参数表示是否从attrsMap字段中移除
 export function getAndRemoveAttr(
   el: ASTElement,
   name: string,
@@ -218,7 +221,7 @@ export function getAndRemoveAttr(
   }
   return val
 }
-
+//从attrsList中获取对应正则属性名的属性值并删除
 export function getAndRemoveAttrByRegex(el: ASTElement, name: RegExp) {
   const list = el.attrsList
   for (let i = 0, l = list.length; i < l; i++) {

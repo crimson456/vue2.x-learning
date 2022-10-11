@@ -3,6 +3,7 @@ import { parseStyleText } from 'web/util/style'
 import { getAndRemoveAttr, getBindingAttr, baseWarn } from 'compiler/helpers'
 import { ASTElement, CompilerOptions, ModuleOptions } from 'types/compiler'
 
+//获取从attrsList中取出静态绑定和动态绑定的style值并挂载在element的staticStyle、styleBinding字段
 function transformNode(el: ASTElement, options: CompilerOptions) {
   const warn = options.warn || baseWarn
   const staticStyle = getAndRemoveAttr(el, 'style')

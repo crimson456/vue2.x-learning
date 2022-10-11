@@ -1,5 +1,5 @@
 /*
-initstate()：(依顺序)
+initstate()：(依顺序)    props、setup、methods、data、computed、watch
   initProps()     挂载到vm._props，并代理在vm上
   initSetup()
   initMethods()   挂载到vm上
@@ -10,7 +10,7 @@ initstate()：(依顺序)
 stateMixin():
   Vue.prototype.$data     从vm._data上取
   Vue.prototype.$props    从vm._props上取
-  Vue.prototype.$set
+  Vue.prototype.$set      
   Vue.prototype.$delete
   Vue.prototype.$watch 
 
@@ -84,7 +84,9 @@ export function initState(vm: Component) {
     const ob = observe((vm._data = {}))
     ob && ob.vmCount++
   }
+  //挂载computed
   if (opts.computed) initComputed(vm, opts.computed)
+  //挂载watch
   if (opts.watch && opts.watch !== nativeWatch) {
     initWatch(vm, opts.watch)
   }
@@ -351,8 +353,7 @@ function initMethods(vm: Component, methods: Object) {
 }
 /*
 初始watch具体实现
-
-
+对watch下的每个值进行遍历，并对每一项调用$watch方法
 */
 function initWatch(vm: Component, watch: Object) {
   for (const key in watch) {
@@ -419,12 +420,15 @@ export function stateMixin(Vue: typeof Component) {
     options?: Record<string, any>
   ): Function {
     const vm: Component = this
+    // 处理cb为对象的情况
     if (isPlainObject(cb)) {
       return createWatcher(vm, expOrFn, cb, options)
     }
     options = options || {}
+    // options.user 表示用户自定义型watcher
     options.user = true
     const watcher = new Watcher(vm, expOrFn, cb, options)
+    //根据配置项选择是否立即执行回调
     if (options.immediate) {
       const info = `callback for immediate watcher "${watcher.expression}"`
       pushTarget()

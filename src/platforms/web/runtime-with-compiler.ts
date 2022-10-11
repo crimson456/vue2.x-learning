@@ -34,7 +34,7 @@ Vue.prototype.$mount = function (
   }
 
   const options = this.$options
-  // resolve template/el and convert to render function
+  // 如果没有自定义的render函数，则获取模板编译成render函数
   if (!options.render) {
     let template = options.template
     if (template) {

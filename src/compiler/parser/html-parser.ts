@@ -1,33 +1,38 @@
-/**
- * Not type-checking this file because it's mostly vendor code.
- */
+/*
+将模板解析成AST的主流程（匹配流程类似mustuche.js中的流程）
 
-/*!
- * HTML Parser By John Resig (ejohn.org)
- * Modified by Juriy "kangax" Zaytsev
- * Original code by Erik Arvidsson (MPL-1.1 OR Apache-2.0 OR GPL-2.0-or-later)
- * http://erik.eae.net/simplehtmlparser/simplehtmlparser.js
- */
+
+
+
+*/
+
 
 import { makeMap, no } from 'shared/util'
 import { isNonPhrasingTag } from 'web/compiler/util'
 import { unicodeRegExp } from 'core/util/lang'
 import { ASTAttr, CompilerOptions } from 'types/compiler'
-
-// Regular Expressions for parsing tags and attributes
-const attribute =
-  /^\s*([^\s"'<>\/=]+)(?:\s*(=)\s*(?:"([^"]*)"+|'([^']*)'+|([^\s"'=<>`]+)))?/
-const dynamicArgAttribute =
-  /^\s*((?:v-[\w-]+:|@|:|#)\[[^=]+?\][^\s"'<>\/=]*)(?:\s*(=)\s*(?:"([^"]*)"+|'([^']*)'+|([^\s"'=<>`]+)))?/
+//Vue2 使用正则匹配生成AST
+//匹配静态属性
+const attribute = /^\s*([^\s"'<>\/=]+)(?:\s*(=)\s*(?:"([^"]*)"+|'([^']*)'+|([^\s"'=<>`]+)))?/
+//匹配动态属性（含有 v-xxx:, :, @, # 的属性）
+const dynamicArgAttribute = /^\s*((?:v-[\w-]+:|@|:|#)\[[^=]+?\][^\s"'<>\/=]*)(?:\s*(=)\s*(?:"([^"]*)"+|'([^']*)'+|([^\s"'=<>`]+)))?/
+//匹配以a-zA-Z_开头，然后是0或多个a-zA-Z_、-或.
 const ncname = `[a-zA-Z_][\\-\\.0-9_a-zA-Z${unicodeRegExp.source}]*`
+//匹配ncname开头，紧跟着一个冒号，然后又跟着一个ncname，捕获整体匹配的内容
 const qnameCapture = `((?:${ncname}\\:)?${ncname})`
+//匹配开始标签开始部分
 const startTagOpen = new RegExp(`^<${qnameCapture}`)
+//匹配开始标签结束部分
 const startTagClose = /^\s*(\/?)>/
+//匹配结束标签
 const endTag = new RegExp(`^<\\/${qnameCapture}[^>]*>`)
+//匹配DOCTYPE声明
 const doctype = /^<!DOCTYPE [^>]+>/i
-// #7298: escape - to avoid being passed as HTML comment when inlined in page
+//匹配注释(<!--和-->)
 const comment = /^<!\--/
+//匹配条件注释(<![和]>)
 const conditionalComment = /^<!\[/
+
 
 // Special Elements (can contain anything)
 export const isPlainTextElement = makeMap('script,style,textarea', true)
@@ -73,15 +78,20 @@ export function parseHTML(html, options: HTMLParserOptions) {
   const expectHTML = options.expectHTML
   const isUnaryTag = options.isUnaryTag || no
   const canBeLeftOpenTag = options.canBeLeftOpenTag || no
+  //标签已读取的位置
   let index = 0
+  //
   let last, lastTag
   while (html) {
     last = html
-    // Make sure we're not in a plaintext content element like script/style
+    // 判断html中是否匹配完所有标签或为纯文本
     if (!lastTag || !isPlainTextElement(lastTag)) {
+      //不是纯文本(内部可能有其他标签)
       let textEnd = html.indexOf('<')
+      // 判断是否以标签开头
       if (textEnd === 0) {
-        // Comment:
+        //以标签开头
+        //处理注释
         if (comment.test(html)) {
           const commentEnd = html.indexOf('-->')
 
@@ -97,7 +107,7 @@ export function parseHTML(html, options: HTMLParserOptions) {
             continue
           }
         }
-
+        //处理条件注释
         // http://en.wikipedia.org/wiki/Conditional_comment#Downlevel-revealed_conditional_comment
         if (conditionalComment.test(html)) {
           const conditionalEnd = html.indexOf(']>')
@@ -108,14 +118,14 @@ export function parseHTML(html, options: HTMLParserOptions) {
           }
         }
 
-        // Doctype:
+        //处理DOCTYPE声明
         const doctypeMatch = html.match(doctype)
         if (doctypeMatch) {
           advance(doctypeMatch[0].length)
           continue
         }
 
-        // End tag:
+        //处理标签结束
         const endTagMatch = html.match(endTag)
         if (endTagMatch) {
           const curIndex = index
@@ -124,7 +134,7 @@ export function parseHTML(html, options: HTMLParserOptions) {
           continue
         }
 
-        // Start tag:
+        //处理标签开始
         const startTagMatch = parseStartTag()
         if (startTagMatch) {
           handleStartTag(startTagMatch)
@@ -134,7 +144,7 @@ export function parseHTML(html, options: HTMLParserOptions) {
           continue
         }
       }
-
+      // 判断是否以文本开头
       let text, rest, next
       if (textEnd >= 0) {
         rest = html.slice(textEnd)
@@ -152,11 +162,11 @@ export function parseHTML(html, options: HTMLParserOptions) {
         }
         text = html.substring(0, textEnd)
       }
-
+      // 判断是否为纯文本
       if (textEnd < 0) {
         text = html
       }
-
+      // 如果以文本开头或纯文本则将文本进行处理
       if (text) {
         advance(text.length)
       }
@@ -207,12 +217,15 @@ export function parseHTML(html, options: HTMLParserOptions) {
   // Clean up any remaining tags
   parseEndTag()
 
+  //封装工具函数：
+  //HTML剩余指针前进n步
   function advance(n) {
     index += n
     html = html.substring(n)
   }
-
+  // 匹配一个开始标签，并生成一个match对象，包括标签名和标签上的每一个属性的捕获组及位置组成的数组
   function parseStartTag() {
+    //匹配标签起始部分，不包括属性
     const start = html.match(startTagOpen)
     if (start) {
       const match: any = {
@@ -222,6 +235,7 @@ export function parseHTML(html, options: HTMLParserOptions) {
       }
       advance(start[0].length)
       let end, attr
+      //匹配标签中的每一个属性或者动态属性
       while (
         !(end = html.match(startTagClose)) &&
         (attr = html.match(dynamicArgAttribute) || html.match(attribute))
@@ -231,7 +245,9 @@ export function parseHTML(html, options: HTMLParserOptions) {
         attr.end = index
         match.attrs.push(attr)
       }
+      //匹配开始标签结束
       if (end) {
+        //是否为单标签
         match.unarySlash = end[1]
         advance(end[0].length)
         match.end = index
@@ -254,7 +270,7 @@ export function parseHTML(html, options: HTMLParserOptions) {
     }
 
     const unary = isUnaryTag(tagName) || !!unarySlash
-
+    //处理标签的属性，将每个属性推入attrs数组中
     const l = match.attrs.length
     const attrs: ASTAttr[] = new Array(l)
     for (let i = 0; i < l; i++) {
@@ -273,7 +289,7 @@ export function parseHTML(html, options: HTMLParserOptions) {
         attrs[i].end = args.end
       }
     }
-
+    //入栈
     if (!unary) {
       stack.push({
         tag: tagName,
@@ -284,7 +300,7 @@ export function parseHTML(html, options: HTMLParserOptions) {
       })
       lastTag = tagName
     }
-
+    //调用传入的start函数处理开始标签
     if (options.start) {
       options.start(tagName, attrs, unary, match.start, match.end)
     }

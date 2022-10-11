@@ -20,7 +20,7 @@ export function createCompilerCreator(baseCompile: Function): Function {
       ) => {
         ;(tip ? tips : errors).push(msg)
       }
-
+      //合并编译的相关选项,生成finalOptions
       if (options) {
         if (__DEV__ && options.outputSourceRange) {
           // $flow-disable-line

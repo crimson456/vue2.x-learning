@@ -1,3 +1,47 @@
+/*
+
+new Watcher(vm,expOrFn,cb,options,isRenderWatcher)
+
+Watcher实例分三种，传入的参数区分
+
+1.渲染Watcher
+调用时机为mountComponent()调用时挂载
+  new Watcher(
+    vm,
+    updateComponent,
+    noop,
+    watcherOptions,   //watcherOptions中有before字段存放beforeUpdate钩子
+    true 
+    )
+具体流程：
+
+创建watcher实例挂载在vm._watcher上，并在实例上挂载各种选项，并处理getter函数
+
+调用get()方法触发getter，并走完整个依赖收集流程：
+getter()方法会
+
+
+
+
+
+
+2.计算Watcher(懒Watcher)
+options.lazy= true
+
+
+3.自定义Watcher
+options.user = true
+
+
+
+
+*/
+
+
+
+
+
+
 import {
   warn,
   remove,
@@ -38,6 +82,7 @@ export interface WatcherOptions extends DebuggerOptions {
  * This is used for both the $watch() api and directives.
  * @internal
  */
+
 export default class Watcher implements DepTarget {
   vm?: Component | null
   expression: string
@@ -84,7 +129,7 @@ export default class Watcher implements DepTarget {
     if ((this.vm = vm) && isRenderWatcher) {
       vm._watcher = this
     }
-    // options
+    //将传入的options的选项挂载在实例上
     if (options) {
       this.deep = !!options.deep
       this.user = !!options.user
@@ -108,10 +153,11 @@ export default class Watcher implements DepTarget {
     this.depIds = new Set()
     this.newDepIds = new Set()
     this.expression = __DEV__ ? expOrFn.toString() : ''
-    // parse expression for getter
+    //处理getter函数
     if (isFunction(expOrFn)) {
       this.getter = expOrFn
     } else {
+      //处理路径表达式的情况，如obj.a.b
       this.getter = parsePath(expOrFn)
       if (!this.getter) {
         this.getter = noop

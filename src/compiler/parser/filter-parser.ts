@@ -1,3 +1,4 @@
+//匹配字母数字及列出的字符，具体用途是判断表达式是不是正则时用到???
 const validDivisionCharRE = /[\w).+\-_$\]]/
 
 export function parseFilters(exp: string): string {

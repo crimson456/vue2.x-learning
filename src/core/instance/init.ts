@@ -27,8 +27,7 @@ export function initMixin(Vue: typeof Component) {
       mark(startTag)
     }
 
-    // a flag to mark this as a Vue instance without having to do instanceof
-    // check
+    //Vue实例的标志位，$set、$delete中用到
     vm._isVue = true
     // avoid instances from being observed
     vm.__v_skip = true
@@ -36,15 +35,15 @@ export function initMixin(Vue: typeof Component) {
     vm._scope = new EffectScope(true /* detached */)
     vm._scope._vm = true
 
-    //合并options
-
-    // merge options
+    //合并options,挂载$options
+    //组件调用
     if (options && options._isComponent) {
       // optimize internal component instantiation
       // since dynamic options merging is pretty slow, and none of the
       // internal component options needs special treatment.
       initInternalComponent(vm, options as any)
     } else {
+    //Vue初始化调用
       vm.$options = mergeOptions(
         resolveConstructorOptions(vm.constructor as any),
         options || {},

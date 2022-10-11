@@ -1,7 +1,8 @@
 import { cached } from 'shared/util'
 import { parseFilters } from './filter-parser'
-
+//默认的模板分隔符
 const defaultTagRE = /\{\{((?:.|\r?\n)+?)\}\}/g
+//匹配需要转义的字符
 const regexEscapeRE = /[-.*+?^${}()|[\]\/\\]/g
 
 const buildRegex = cached(delimiters => {

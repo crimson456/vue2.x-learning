@@ -227,16 +227,19 @@ export function set(
   key: any,
   val: any
 ): any {
+  //处理undefined
   if (__DEV__ && (isUndef(target) || isPrimitive(target))) {
     warn(
       `Cannot set reactive property on undefined, null, or primitive value: ${target}`
     )
   }
+  //处理只读的属性
   if (isReadonly(target)) {
     __DEV__ && warn(`Set operation on key "${key}" failed: target is readonly.`)
     return
   }
   const ob = (target as any).__ob__
+  //处理目标为数组:更改数组长度，调用改写过的方法触发添加响应式
   if (isArray(target) && isValidArrayIndex(key)) {
     target.length = Math.max(target.length, key)
     target.splice(key, 1, val)
@@ -246,10 +249,12 @@ export function set(
     }
     return val
   }
+  //处理目标对象上已经有该属性的情况：直接赋值
   if (key in target && !(key in Object.prototype)) {
     target[key] = val
     return val
   }
+  //警告将Vue构造函数作为对象的情况
   if ((target as any)._isVue || (ob && ob.vmCount)) {
     __DEV__ &&
       warn(
@@ -258,10 +263,12 @@ export function set(
       )
     return val
   }
+  //处理目标不被观察的情况：不进行响应式处理
   if (!ob) {
     target[key] = val
     return val
   }
+  //处理为响应式并且触发依赖收集
   defineReactive(ob.value, key, val, undefined, ob.shallow, ob.mock)
   if (__DEV__) {
     ob.dep.notify({
@@ -283,16 +290,19 @@ export function set(
 export function del<T>(array: T[], key: number): void
 export function del(object: object, key: string | number): void
 export function del(target: any[] | object, key: any) {
+  //处理undefined
   if (__DEV__ && (isUndef(target) || isPrimitive(target))) {
     warn(
       `Cannot delete reactive property on undefined, null, or primitive value: ${target}`
     )
   }
+  //处理数组的情况：调用重写的方法
   if (isArray(target) && isValidArrayIndex(key)) {
     target.splice(key, 1)
     return
   }
   const ob = (target as any).__ob__
+  //警告将Vue构造函数作为对象的情况
   if ((target as any)._isVue || (ob && ob.vmCount)) {
     __DEV__ &&
       warn(
@@ -301,18 +311,22 @@ export function del(target: any[] | object, key: any) {
       )
     return
   }
+  //处理只读的情况
   if (isReadonly(target)) {
     __DEV__ &&
       warn(`Delete operation on key "${key}" failed: target is readonly.`)
     return
   }
+  //对象上没有该属性则返回
   if (!hasOwn(target, key)) {
     return
   }
   delete target[key]
+  //不是响应式对象则什么也不做
   if (!ob) {
     return
   }
+  //响应式对象触发依赖的视图更新
   if (__DEV__) {
     ob.dep.notify({
       type: TriggerOpTypes.DELETE,
