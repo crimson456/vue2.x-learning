@@ -8,6 +8,8 @@ function transformNode(el: ASTElement, options: CompilerOptions) {
   const warn = options.warn || baseWarn
   const staticStyle = getAndRemoveAttr(el, 'style')
   if (staticStyle) {
+    // 对从 style 属性值文本中解析到了分隔符做出提示
+    // 有分隔符的情况说明是一个动态绑定的 style 
     /* istanbul ignore if */
     if (__DEV__) {
       const res = parseText(staticStyle, options.delimiters)

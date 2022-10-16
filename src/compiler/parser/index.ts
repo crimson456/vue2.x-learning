@@ -39,14 +39,14 @@ export const forAliasRE = /([\s\S]*?)\s+(?:in|of)\s+([\s\S]*)/
 export const forIteratorRE = /,([^,\}\]]*)(?:,([^,\}\]]*))?$/
 //
 const stripParensRE = /^\(|\)$/g
-//匹配v-slot中是否为动态插槽名
+//匹配是否为动态参数名 eg. <div :[id]="test"></div>
 const dynamicArgRE = /^\[.*\]$/
 
-//匹配并捕获:开头的属性
+//匹配并捕获指令的参数  v-dir:arg="xxx"
 const argRE = /:(.*)$/
 //匹配:或v-bind开头的属性
 export const bindRE = /^:|^\.|^v-bind:/
-//
+//匹配.prop修饰符的简写形式 .xxx
 const propBindRE = /^\./
 //匹配属性中的修饰符
 const modifierRE = /\.[^.\]]+(?=[^\]]*$)/g
@@ -54,12 +54,12 @@ const modifierRE = /\.[^.\]]+(?=[^\]]*$)/g
 //匹配v-slot指令的值
 const slotRE = /^v-slot(:|$)|^#/
 
-//
+//匹配换行符，用于文本处理时是否将 换行符处理为一个空白
 const lineBreakRE = /[\r\n]/
-//
+//匹配所有空白符
 const whitespaceRE = /[ \f\t\r\n]+/g
 
-//
+//匹配字符spaces, quotes, <, >, / ， =，用于验证标签上的属性是否有效
 const invalidAttributeRE = /[\s"'<>\/=]/
 
 const decodeHTMLCached = cached(he.decode)
@@ -131,27 +131,31 @@ export function parse(template: string, options: CompilerOptions): ASTElement {
       warn(msg, range)
     }
   }
-
+  // 处理对应元素的结束标签的主逻辑
   function closeElement(element) {
     //去掉空白的结尾文本节点
     trimEndingWhitespace(element)
-    //如果没有v-pre指令，正常进行处理
+    //如果没有v-pre指令，正常进行处理元素关闭
     if (!inVPre && !element.processed) {
+      // 处理元素上的各种属性
       element = processElement(element, options)
     }
     // 处理如果不止一个根元素的情况
     if (!stack.length && element !== root) {
-      // 允许根元素用v-if, v-else-if and v-else定义
+      // 允许有多个根元素用v-if, v-else-if,v-else定义
       if (root.if && (element.elseif || element.else)) {
         if (__DEV__) {
           //每个分支都进行限制
           checkRootConstraints(element)
         }
+        // 给根元素添加ifCondition字段 ???这段处理的意义是什么
         addIfCondition(root, {
           exp: element.elseif,
           block: element
         })
-      } else if (__DEV__) {
+      }
+      // 提示根元素v-if指令必须和 v-else-if, v-else同用，确保一定有一个根元素
+      else if (__DEV__) {
         warnOnce(
           `Component template should contain exactly one root element. ` +
             `If you are using v-if on multiple elements, ` +
@@ -160,38 +164,41 @@ export function parse(template: string, options: CompilerOptions): ASTElement {
         )
       }
     }
+    // 处理节点之间的关系
     if (currentParent && !element.forbidden) {
+      // 如果存在v-else-if或v-else指令，则向对应v-if指令的元素ifConditions字段添加一项  ???作用
       if (element.elseif || element.else) {
         processIfConditions(element, currentParent)
-      } else {
+      } 
+      else {
+        // 如果当前元素为作用域插槽，将其slotTarget字段记录在父元素的scopedSlots字段下
         if (element.slotScope) {
           // scoped slot
           // keep it in the children list so that v-else(-if) conditions can
           // find it as the prev node.
-          const name = element.slotTarget || '"default"'
-          ;(currentParent.scopedSlots || (currentParent.scopedSlots = {}))[
-            name
-          ] = element
+          const name = element.slotTarget || '"default"';
+          (currentParent.scopedSlots || (currentParent.scopedSlots = {}))[name] = element
         }
+        // 将自己放到父元素的 children 数组中，然后设置自己的 parent 属性为 currentParent
         currentParent.children.push(element)
         element.parent = currentParent
       }
     }
-
-    // final children cleanup
-    // filter out scoped slots
+    //去除子节点中所有作用域插槽
     element.children = element.children.filter(c => !c.slotScope)
-    // remove trailing whitespace node again
+    //去掉空白的结尾文本节点
     trimEndingWhitespace(element)
 
-    // check pre state
+    // 处理有v-pre指令标签的闭合
     if (element.pre) {
       inVPre = false
     }
+    // 处理pre标签的闭合
     if (platformIsPreTag(element.tag)) {
       inPre = false
     }
-    // apply post-transforms
+    // 分别为 element 执行 model、class、style 三个模块的 postTransform 方法
+    // 但是 web 平台没有提供该方法
     for (let i = 0; i < postTransforms.length; i++) {
       postTransforms[i](element, options)
     }
@@ -238,8 +245,8 @@ export function parse(template: string, options: CompilerOptions): ASTElement {
     shouldDecodeNewlines: options.shouldDecodeNewlines,
     shouldDecodeNewlinesForHref: options.shouldDecodeNewlinesForHref,
     shouldKeepComment: options.comments,
-    outputSourceRange: options.outputSourceRange,
-    //处理开始标签
+    outputSourceRange: options.outputSourceRange,     //options.outputSourceRange === __DEV__
+    // 处理开始标签
     start(tag, attrs, unary, start, end) {
       // check namespace.
       // inherit parent ns if there is one
@@ -268,7 +275,7 @@ export function parse(template: string, options: CompilerOptions): ASTElement {
             return cumulated
           }, {})
         }
-        //验证属性是否有效（属性名不能包含: spaces, quotes, <, >, / or =.)
+        //验证属性是否有效（属性名不能包含: spaces, quotes, <, >, / or =)
         attrs.forEach(attr => {
           if (invalidAttributeRE.test(attr.name)) {
             warn(
@@ -353,27 +360,34 @@ export function parse(template: string, options: CompilerOptions): ASTElement {
         closeElement(element)
       }
     },
-
+    // 处理标签结束
     end(tag, start, end) {
       const element = stack[stack.length - 1]
-      // pop stack
+      // 出栈
       stack.length -= 1
       currentParent = stack[stack.length - 1]
+      // options.outputSourceRange === __DEV__
       if (__DEV__ && options.outputSourceRange) {
+        // 更新结束位置
         element.end = end
       }
+      // 处理标签结束
       closeElement(element)
     },
-
+    // 解析文本内容
     chars(text: string, start?: number, end?: number) {
+      // 文本没有父元素,异常处理
       if (!currentParent) {
         if (__DEV__) {
+          // 对没有根标签的情况进行提示
           if (text === template) {
             warnOnce(
               'Component template requires a root element, rather than just text.',
               { start }
             )
-          } else if ((text = text.trim())) {
+          } 
+          // 对根元素外有文本的情况进行提示
+          else if ((text = text.trim())) {
             warnOnce(`text "${text}" outside root element will be ignored.`, {
               start
             })
@@ -390,15 +404,20 @@ export function parse(template: string, options: CompilerOptions): ASTElement {
       ) {
         return
       }
+      
       const children = currentParent.children
+      // 处理在pre标签中文本、非空白文本的解码和空白文本处理问题(初步处理)
       if (inPre || text.trim()) {
+        // 在pre标签中,或者文本不是空白的情况
         text = isTextTag(currentParent)
+        // style和script标签中文本不需要解码
           ? text
           : (decodeHTMLCached(text) as string)
       } else if (!children.length) {
-        // remove the whitespace-only node right after an opening tag
+        // 不在pre标签,且文本是空白的情况,且前面有闭合的子元素
         text = ''
       } else if (whitespaceOption) {
+        // 不在pre标签,且文本是空白的情况,且前面没有闭合的子元素,且存在whitespaceOption的情况
         if (whitespaceOption === 'condense') {
           // in condense mode, remove the whitespace node if it contains
           // line break, otherwise condense to a single space
@@ -407,32 +426,44 @@ export function parse(template: string, options: CompilerOptions): ASTElement {
           text = ' '
         }
       } else {
+        // 不在pre标签,且文本是空白的情况,且前面没有闭合的子元素,且不存在whitespaceOption的情况
         text = preserveWhitespace ? ' ' : ''
       }
+      // 经过初步处理后文本还存在
       if (text) {
+        // 不在pre标签中且有压缩选项，则将连续空白压缩为单个
         if (!inPre && whitespaceOption === 'condense') {
-          // condense consecutive whitespaces into single space
           text = text.replace(whitespaceRE, ' ')
         }
         let res
         let child: ASTNode | undefined
+        // 处理为表达式节点
         if (!inVPre && text !== ' ' && (res = parseText(text, delimiters))) {
+          // 不在v-pre指令中，且文本不为单个空白，且匹配到模板分隔符
           child = {
             type: 2,
             expression: res.expression,
             tokens: res.tokens,
             text
           }
-        } else if (
+        } 
+        // 处理为纯文本节点
+        else if (
           text !== ' ' ||
           !children.length ||
           children[children.length - 1].text !== ' '
         ) {
+          // 在v-pre指令中，或文本为单个空白，或未匹配到模板语法
+          // 且满足文本不为单个空白，或前面没有闭合的同级节点，或前面的同级节点文本为单个空白
+          // 此处逻辑复杂，可从单个空白入手整理，可为：
+          // 1.文本为单个空白，前面没有闭合同级节点或同级节点文本为单个空白
+          // 2.文本不为单个空白，处于v-pre指令中或没有模板语法
           child = {
             type: 3,
             text
           }
         }
+        // 入栈
         if (child) {
           if (__DEV__ && options.outputSourceRange) {
             child.start = start
@@ -442,9 +473,11 @@ export function parse(template: string, options: CompilerOptions): ASTElement {
         }
       }
     },
+    // 处理注释标签
     comment(text: string, start, end) {
       // adding anything as a sibling to the root node is forbidden
       // comments should still be allowed, but ignored
+      // 生成文本节点并入栈
       if (currentParent) {
         const child: ASTText = {
           type: 3,
@@ -493,7 +526,7 @@ function processRawAttrs(el) {
     el.plain = true
   }
 }
-
+// 正常处理元素关闭
 export function processElement(element: ASTElement, options: CompilerOptions) {
   // 处理动态绑定的key属性值，在element上挂载key字段
   processKey(element)
@@ -511,20 +544,13 @@ export function processElement(element: ASTElement, options: CompilerOptions) {
   processComponent(element)
   // 执行 class、style、model 模块中的 transformNode 方法
   // web 平台只有 class、style 模块有 transformNode 方法，分别用来处理 class 属性和 style 属性
-  // 在element上挂载staticStyle、styleBinding、staticClass、classBinding字段
-  // 分别存放静态 style 属性的值、动态 style 属性的值，以及静态 class 属性的值和动态 class 属性的值
+  // 在element上挂载staticStyle、styleBinding、staticClass、classBinding字段，分别存放静态和动态绑定的 style、class 属性的值
   for (let i = 0; i < transforms.length; i++) {
     element = transforms[i](element, options) || element
   }
-  /**
-   * 处理元素上的所有属性：
-   * v-bind 指令变成：el.attrs 或 el.dynamicAttrs = [{ name, value, start, end, dynamic }, ...]，
-   *                或者是必须使用 props 的属性，变成了 el.props = [{ name, value, start, end, dynamic }, ...]
-   * v-on 指令变成：el.events 或 el.nativeEvents = { name: [{ value, start, end, modifiers, dynamic }, ...] }
-   * 其它指令：el.directives = [{name, rawName, value, arg, isDynamicArg, modifier, start, end }, ...]
-   * 原生属性：el.attrs = [{ name, value, start, end }]，或者一些必须使用 props 的属性，变成了：
-   *         el.props = [{ name, value: true, start, end, dynamic }]
-   */
+  // 处理元素上的其他所有属性：
+  // 动态绑定、事件绑定、指令、普通属性
+  // element上挂载attrs、dynamicAttrs、props、events、nativeEvents、directives
   processAttrs(element)
   return element
 }
@@ -635,13 +661,17 @@ function processIf(el) {
 }
 
 function processIfConditions(el, parent) {
+  // 查找前一个元素节点
   const prev = findPrevElement(parent.children)
   if (prev && prev.if) {
+    // 给前一个元素添加ifConditions字段
     addIfCondition(prev, {
       exp: el.elseif,
       block: el
     })
-  } else if (__DEV__) {
+  } 
+  // 提示v-else-if或v-else指令没有对应的v-if指令
+  else if (__DEV__) {
     warn(
       `v-${el.elseif ? 'else-if="' + el.elseif + '"' : 'else'} ` +
         `used on element <${el.tag}> without corresponding v-if.`,
@@ -650,12 +680,14 @@ function processIfConditions(el, parent) {
   }
 }
 
+// 遍历寻找数组中前一个元素节点
 function findPrevElement(children: Array<any>): ASTElement | void {
   let i = children.length
   while (i--) {
     if (children[i].type === 1) {
       return children[i]
     } else {
+      // 如果不是元素节点，且节点text字段为空，则删除此节点并提示
       if (__DEV__ && children[i].text !== ' ') {
         warn(
           `text "${children[i].text.trim()}" between v-if and v-else(-if) ` +
@@ -684,7 +716,7 @@ function processOnce(el) {
 
 // handle content being passed to a component as slot,
 // e.g. <template slot="xxx">, <div slot-scope="xxx">
-// 处理插槽内容
+// 处理插槽内容相关
 function processSlotContent(el) {
   let slotScope
   // 获取slot-scope属性(或template标签上的scope属性)并挂载在element.slotScope字段上
@@ -835,7 +867,7 @@ function getSlotName(binding) {
       { name: `"${name}"`, dynamic: false }
 }
 
-// handle <slot/> outlets
+// 处理slot标签结束 </slot>
 function processSlotOutlet(el) {
   if (el.tag === 'slot') {
     el.slotName = getBindingAttr(el, 'name')
@@ -861,46 +893,65 @@ function processComponent(el) {
     el.inlineTemplate = true
   }
 }
-
+// 处理剩下的其他属性，也就是正常的用户定义的和指令无关属性(前面使用的属性都从attrsList中取出)
+// 挂载
 function processAttrs(el) {
   const list = el.attrsList
   let i, l, name, rawName, value, modifiers, syncGen, isDynamic
+  // 遍历剩下的所有属性
   for (i = 0, l = list.length; i < l; i++) {
+    // 属性名，name后面用作不包括修饰符的属性名
     name = rawName = list[i].name
+    // 属性值
     value = list[i].value
+    // 属性是否为指令(以 v- @ # . ：开头为指令)
     if (dirRE.test(name)) {
       // mark element as dynamic
+      // 如果元素上存在指令，则标记为动态元素
       el.hasBindings = true
-      // modifiers
+      // 获取修饰符
       modifiers = parseModifiers(name.replace(dirRE, ''))
+
+      // 处理有修饰符的情况下，获取不包括修饰符的属性名
       // support .foo shorthand syntax for the .prop modifier
       if (process.env.VBIND_PROP_SHORTHAND && propBindRE.test(name)) {
+        // 处理 修饰符.prop时的 简写形式 ，好像没有写入文档 v3.2加入文档
         ;(modifiers || (modifiers = {})).prop = true
         name = `.` + name.slice(1).replace(modifierRE, '')
       } else if (modifiers) {
         name = name.replace(modifierRE, '')
       }
+
+      // 处理动态绑定的属性(以 : v-bind: . 开头为动态绑定)
+      // 挂载element上的props、attrs、dynamicAttrs字段
       if (bindRE.test(name)) {
-        // v-bind
+        // 属性名
         name = name.replace(bindRE, '')
+        // 属性值，进行过滤器处理
         value = parseFilters(value)
+        // 处理动态的属性名 eg.  <div :[id]="test"></div>
         isDynamic = dynamicArgRE.test(name)
         if (isDynamic) {
           name = name.slice(1, -1)
         }
+        // 提示动态绑定属性值不能为空
         if (__DEV__ && value.trim().length === 0) {
           warn(
             `The value for a v-bind expression cannot be empty. Found in "v-bind:${name}"`
           )
         }
+        // 存在修饰符的情况，处理修饰符命名转换，以方便后续转换使用
         if (modifiers) {
+          // 处理.prop修饰符 
           if (modifiers.prop && !isDynamic) {
             name = camelize(name)
             if (name === 'innerHtml') name = 'innerHTML'
           }
+          // 处理.camel修饰符
           if (modifiers.camel && !isDynamic) {
             name = camelize(name)
           }
+          // 处理.sync修饰符  sync修饰符是事件绑定的语法糖
           if (modifiers.sync) {
             syncGen = genAssignmentCode(value, `$event`)
             if (!isDynamic) {
@@ -939,36 +990,52 @@ function processAttrs(el) {
             }
           }
         }
+        // 判断需要转化为attribute还是property(attribute是html标签中的属性，property是dom层面的js属性)
+        // 其中最显著的就是输入框中的值，需要取的DOM中的值才行，所以必须处理为prop
         if (
+          // 有.prop修饰符
           (modifiers && modifiers.prop) ||
+          // 标签中必须要使用 DOM属性才能生效的属性
           (!el.component && platformMustUseProp(el.tag, el.attrsMap.type, name))
         ) {
+          // 向el.props数组添加一项
           addProp(el, name, value, list[i], isDynamic)
         } else {
+          // 向el.attrs或el.dynamicAttrs数组添加一项
           addAttr(el, name, value, list[i], isDynamic)
         }
-      } else if (onRE.test(name)) {
-        // v-on
+      } 
+      // 处理事件绑定的属性(以 @ v-on: 开头为事件绑定)
+      // 挂载element上的events、nativeEvents字段
+      else if (onRE.test(name)) {
+        // 事件名
         name = name.replace(onRE, '')
+        // 动态绑定名称
         isDynamic = dynamicArgRE.test(name)
         if (isDynamic) {
           name = name.slice(1, -1)
         }
+        // 处理事件属性，将事件属性添加到el的events、nativeEvents字段
         addHandler(el, name, value, modifiers, false, warn, list[i], isDynamic)
-      } else {
-        // normal directives
+      } 
+      // 其他指令的处理
+      else {
+        // 指令名
         name = name.replace(dirRE, '')
-        // parse arg
+        // 参数
         const argMatch = name.match(argRE)
         let arg = argMatch && argMatch[1]
         isDynamic = false
+        // 处理有参数的情况
         if (arg) {
           name = name.slice(0, -(arg.length + 1))
+          // 处理动态参数的情况
           if (dynamicArgRE.test(arg)) {
             arg = arg.slice(1, -1)
             isDynamic = true
           }
         }
+        // 挂载element上的directives字段上
         addDirective(
           el,
           name,
@@ -979,12 +1046,13 @@ function processAttrs(el) {
           modifiers,
           list[i]
         )
+        // 对v-model双向绑定当前元素或祖先元素中的v-for指令使用的别名做出警告
         if (__DEV__ && name === 'model') {
           checkForAliasModel(el, value)
         }
       }
     } else {
-      // literal attribute
+      // 对属性中解析到分隔符做出提示应该使用动态绑定语法
       if (__DEV__) {
         const res = parseText(value, delimiters)
         if (res) {
@@ -997,9 +1065,11 @@ function processAttrs(el) {
           )
         }
       }
+      // 静态绑定的属性直接添加到el.attrs
       addAttr(el, name, JSON.stringify(value), list[i])
       // #6887 firefox doesn't update muted state if set via attribute
       // even immediately after element creation
+      // 将需要修改DOM prop上属性添加到el.props
       if (
         !el.component &&
         name === 'muted' &&
@@ -1021,7 +1091,8 @@ function checkInFor(el: ASTElement): boolean {
   }
   return false
 }
-
+// 返回指令的修饰符名组成的对象
+// 传入的参数要去掉指令开头
 function parseModifiers(name: string): Object | void {
   const match = name.match(modifierRE)
   if (match) {
@@ -1044,11 +1115,11 @@ function makeAttrsMap(attrs: Array<Record<string, any>>): Record<string, any> {
   return map
 }
 
-// for script (e.g. type="x/template") or style, do not decode content
+// 判断是否为纯文本标签,纯文本标签内容不需要解码???
 function isTextTag(el): boolean {
   return el.tag === 'script' || el.tag === 'style'
 }
-
+// 在非服务端渲染的情况下，是否为禁用的标签
 function isForbiddenTag(el): boolean {
   return (
     el.tag === 'style' ||
@@ -1072,7 +1143,7 @@ function guardIESVGBug(attrs) {
   }
   return res
 }
-
+// 对v-model双向绑定当前元素或祖先元素中的v-for指令使用的别名做出警告
 function checkForAliasModel(el, value) {
   let _el = el
   while (_el) {

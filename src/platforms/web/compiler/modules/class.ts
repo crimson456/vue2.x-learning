@@ -7,6 +7,9 @@ function transformNode(el: ASTElement, options: CompilerOptions) {
   const warn = options.warn || baseWarn
   const staticClass = getAndRemoveAttr(el, 'class')
   if (__DEV__ && staticClass) {
+    // 对从 class 属性值文本中解析到了分隔符做出提示
+    // 有分隔符的情况说明是一个动态绑定的 class 
+    /* istanbul ignore if */
     const res = parseText(staticClass, options.delimiters)
     if (res) {
       warn(

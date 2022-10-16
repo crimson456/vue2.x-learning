@@ -119,9 +119,7 @@ export function makeMap(
   return expectsLowerCase ? val => map[val.toLowerCase()] : val => map[val]
 }
 
-/**
- * Check if a tag is a built-in tag.
- */
+// 检查标签名是否为内建的标签slot和component
 export const isBuiltInTag = makeMap('slot,component', true)
 
 /**
@@ -149,9 +147,8 @@ export function hasOwn(obj: Object | Array<any>, key: string): boolean {
   return hasOwnProperty.call(obj, key)
 }
 
-/**
- * Create a cached version of a pure function.
- */
+
+// 用一个闭包缓存函数，反复调用时不需再创建
 export function cached<R>(fn: (str: string) => R): (sr: string) => R {
   const cache: Record<string, R> = Object.create(null)
   return function cachedFn(str: string) {
@@ -163,6 +160,7 @@ export function cached<R>(fn: (str: string) => R): (sr: string) => R {
 /**
  * Camelize a hyphen-delimited string.
  */
+// 将xxx-xxx的字符串转换成驼峰命名的
 const camelizeRE = /-(\w)/g
 export const camelize = cached((str: string): string => {
   return str.replace(camelizeRE, (_, c) => (c ? c.toUpperCase() : ''))
@@ -178,6 +176,7 @@ export const capitalize = cached((str: string): string => {
 /**
  * Hyphenate a camelCase string.
  */
+// 将驼峰命名的字符串转换成xxx-xxx的
 const hyphenateRE = /\B([A-Z])/g
 export const hyphenate = cached((str: string): string => {
   return str.replace(hyphenateRE, '-$1').toLowerCase()

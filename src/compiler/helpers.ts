@@ -9,7 +9,7 @@ export function baseWarn(msg: string, range?: Range) {
   console.error(`[Vue compiler]: ${msg}`)
 }
 /* eslint-enable no-unused-vars */
-
+// 获取模块中的某块函数
 export function pluckModuleFunction<T, K extends keyof T>(
   modules: Array<T> | undefined,
   key: K
@@ -17,6 +17,7 @@ export function pluckModuleFunction<T, K extends keyof T>(
   return modules ? (modules.map(m => m[key]).filter(_ => _) as any) : []
 }
 
+// 向el.props数组添加一个值
 export function addProp(
   el: ASTElement,
   name: string,
@@ -29,7 +30,7 @@ export function addProp(
   )
   el.plain = false
 }
-
+// 向el.attrs或el.dynamicAttrs数组添加一个值
 export function addAttr(
   el: ASTElement,
   name: string,
@@ -44,7 +45,7 @@ export function addAttr(
   el.plain = false
 }
 
-// add a raw attr (use this in preTransforms)
+// 向el.attrsMap、el.attrsList中添加属性
 export function addRawAttr(
   el: ASTElement,
   name: string,
@@ -54,7 +55,7 @@ export function addRawAttr(
   el.attrsMap[name] = value
   el.attrsList.push(rangeSetItem({ name, value }, range))
 }
-
+// 向el.directives字段添加一项
 export function addDirective(
   el: ASTElement,
   name: string,
@@ -80,7 +81,7 @@ export function addDirective(
   )
   el.plain = false
 }
-
+// 为name添加不同的标记(动、静态绑定不同处理)
 function prependModifierMarker(
   symbol: string,
   name: string,
@@ -88,7 +89,8 @@ function prependModifierMarker(
 ): string {
   return dynamic ? `_p(${name},"${symbol}")` : symbol + name // mark the event as captured
 }
-
+//处理事件属性，将事件属性添加到el的events、nativeEvents字段
+//events、nativeEvents字段都为事件队列，同一个事件可能绑定多个处理
 export function addHandler(
   el: ASTElement,
   name: string,
@@ -100,8 +102,8 @@ export function addHandler(
   dynamic?: boolean
 ) {
   modifiers = modifiers || emptyObject
-  // warn prevent and passive modifier
   /* istanbul ignore if */
+  // 不能同时使用.prevent、.passive修饰符
   if (__DEV__ && warn && modifiers.prevent && modifiers.passive) {
     warn(
       "passive and prevent can't be used together. " +
@@ -113,6 +115,7 @@ export function addHandler(
   // normalize click.right and click.middle since they don't actually fire
   // this is technically browser-specific, but at least for now browsers are
   // the only target envs that have right/middle clicks.
+  // 右键
   if (modifiers.right) {
     if (dynamic) {
       name = `(${name})==='click'?'contextmenu':(${name})`
@@ -120,7 +123,9 @@ export function addHandler(
       name = 'contextmenu'
       delete modifiers.right
     }
-  } else if (modifiers.middle) {
+  } 
+  // 中间键
+  else if (modifiers.middle) {
     if (dynamic) {
       name = `(${name})==='click'?'mouseup':(${name})`
     } else if (name === 'click') {
@@ -128,7 +133,7 @@ export function addHandler(
     }
   }
 
-  // check capture modifier
+  // 处理.capture、.once、.passive修饰符，通过给 name 添加不同的标记来标记这些修饰符
   if (modifiers.capture) {
     delete modifiers.capture
     name = prependModifierMarker('!', name, dynamic)
@@ -144,18 +149,20 @@ export function addHandler(
   }
 
   let events
+  // 处理.native修饰符，分别将事件存入el.nativeEvents、el.events 字段
   if (modifiers.native) {
     delete modifiers.native
     events = el.nativeEvents || (el.nativeEvents = {})
   } else {
     events = el.events || (el.events = {})
   }
-
+  // 将其他修饰符放在newHandler.modifiers下
   const newHandler: any = rangeSetItem({ value: value.trim(), dynamic }, range)
   if (modifiers !== emptyObject) {
     newHandler.modifiers = modifiers
   }
 
+  // 根据事件是否有import标记，放入事件队头或队尾
   const handlers = events[name]
   /* istanbul ignore if */
   if (Array.isArray(handlers)) {
@@ -187,6 +194,7 @@ export function getBindingAttr(
   const dynamicValue =
     getAndRemoveAttr(el, ':' + name) || getAndRemoveAttr(el, 'v-bind:' + name)
   if (dynamicValue != null) {
+    // 动态绑定的值进行过滤器处理
     return parseFilters(dynamicValue)
   } else if (getStatic !== false) {
     const staticValue = getAndRemoveAttr(el, name)
@@ -233,6 +241,7 @@ export function getAndRemoveAttrByRegex(el: ASTElement, name: RegExp) {
   }
 }
 
+// 将第二个参数的start和end字段赋给第一个值
 function rangeSetItem(item: any, range?: { start?: number; end?: number }) {
   if (range) {
     if (range.start != null) {

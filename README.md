@@ -14,6 +14,28 @@ vue2.x-learning
 |
 |----src                     源码
 |  |----compiler                模板编译相关
+|  |  |----index                编译入口
+|  |  |----codeframe
+|  |  |----create-compiler
+|  |  |----error-detector
+|  |  |----helpers
+|  |  |----optimizer
+|  |  |----to-function
+|  |  |----codegen
+|  |  |  |----
+|  |  |  |----
+|  |  |  |----
+|  |  |----directives
+|  |  |  |----
+|  |  |  |----
+|  |  |  |----
+|  |  |----parser               模板编译成AST
+|  |  |  |----index             入口，主要进行AST操作
+|  |  |  |----html-parser       模板匹配的主要逻辑
+|  |  |  |----text-parser       对文本中的模板语法进行编译
+|  |  |  |----filter-parser     对模板语法中的过滤器语法进行编译
+|  |  |  |----entity-decoder    
+|  |  |
 |  |----core                    vue2核心代码
 |  |  |----instance                 实例创建相关
 |  |  |  |----index                 
@@ -51,10 +73,13 @@ vue2.x-learning
 |  |  |  |----
 |  |  |
 |  |  |----vdom
-|  |----platforms                 平台相关
-|  |----server                    服务端渲染相关
-|  |----sfc                       单文件组件相关
+|  |----platforms\web                 平台相关
+|  |  |----
+|  |  |----
+|  |  |----
 |  |----shared                    模块间共享属性和方法
+|  |----v3                          
+|  |----global.d.ts                  
 |
 |----dist                    打包出口目录
 |----benchmarks              性能测试
