@@ -18,21 +18,26 @@ import {
 } from 'compiler/parser/index'
 import { ASTElement, CompilerOptions, ModuleOptions } from 'types/compiler'
 
+// 处理v-model绑定的input标签的type为动态绑定的情况(通过v-if、v-else-if、v-else来处理)
 function preTransformNode(el: ASTElement, options: CompilerOptions) {
+  // v-model只对input标签做处理
   if (el.tag === 'input') {
     const map = el.attrsMap
+    // 如果没有v-model指令直接退出
     if (!map['v-model']) {
       return
     }
-
+    // typeBinding为input输入框的类型
     let typeBinding
+    // 获取输入框类型的动态绑定
     if (map[':type'] || map['v-bind:type']) {
       typeBinding = getBindingAttr(el, 'type')
     }
+    // v-bind对象语法的处理
     if (!map.type && !typeBinding && map['v-bind']) {
       typeBinding = `(${map['v-bind']}).type`
     }
-
+    // 为el的克隆一个元素branch0，他的ifCondition字段分别挂载三个分支处理不同情况???
     if (typeBinding) {
       const ifCondition = getAndRemoveAttr(el, 'v-if', true)
       const ifConditionExtra = ifCondition ? `&&(${ifCondition})` : ``

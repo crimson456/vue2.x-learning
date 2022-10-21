@@ -1,3 +1,6 @@
+// 此处是处理 v-bind= xxx 的情况
+
+
 import { ASTDirective, ASTElement } from 'types/compiler'
 
 export default function bind(el: ASTElement, dir: ASTDirective) {

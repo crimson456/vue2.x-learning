@@ -8,7 +8,8 @@
 // _c('div', { attrs: bindDynamicKeys({ "id": "app" }, [key, value]) })
 
 import { warn } from 'core/util/debug'
-
+// 将动态属性名加入到所有属性的对象中
+// 本质是第二参数数组中的每两项组成一个字段合并到第一个参数，使用时调用以提供动态的属性名
 export function bindDynamicKeys(
   baseObj: Record<string, any>,
   values: Array<any>

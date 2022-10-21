@@ -90,7 +90,8 @@ function prependModifierMarker(
   return dynamic ? `_p(${name},"${symbol}")` : symbol + name // mark the event as captured
 }
 //处理事件属性，将事件属性添加到el的events、nativeEvents字段
-//events、nativeEvents字段都为事件队列，同一个事件可能绑定多个处理
+//events、nativeEvents字段都为事件队列的数组，同一个事件可能绑定多个处理
+// 字段的格式：[!~&name:[{value:xxx,dynamic:xxx,modifiers:xxx},{},{}]]
 export function addHandler(
   el: ASTElement,
   name: string,
@@ -133,7 +134,8 @@ export function addHandler(
     }
   }
 
-  // 处理.capture、.once、.passive修饰符，通过给 name 添加不同的标记来标记这些修饰符
+  // 处理.capture、.once、.passive修饰符，通过给 name 添加不同的标记来标记这些修饰符，动态属性用_p()包裹，结果相同
+  // 这三个修饰符会在modifiers中删除
   if (modifiers.capture) {
     delete modifiers.capture
     name = prependModifierMarker('!', name, dynamic)

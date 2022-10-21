@@ -96,8 +96,8 @@ function markStatic(node: ASTNode) {
 function markStaticRoots(node: ASTNode, isInFor: boolean) {
   // 静态根只会对元素节点，文本、表达式节点都不会标记静态根
   if (node.type === 1) {
-    // 对在v-for指令内的静态节点和有v-once指令的节点标记node.staticInFor=true
-    // 对在v-for指令外的静态节点和有v-once指令的节点标记node.staticInFor=false
+    // 对在v-for指令内的静态节点或有v-once指令的节点标记node.staticInFor=true
+    // 对在v-for指令外的静态节点或有v-once指令的节点标记node.staticInFor=false
     if (node.static || node.once) {
       node.staticInFor = isInFor
     }

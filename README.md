@@ -14,16 +14,16 @@ vue2.x-learning
 |
 |----src                     源码
 |  |----compiler                模板编译相关
-|  |  |----index                编译入口
-|  |  |----codeframe
-|  |  |----create-compiler
+|  |  |----index                编译入口，调用createCompilerCreator函数,传入baseCompile函数(编译的主流程)
+|  |  |----codeframe            
+|  |  |----create-compiler      暴露createCompilerCreator函数
 |  |  |----error-detector
 |  |  |----helpers
-|  |  |----optimizer
+|  |  |----optimizer            AST优化，标记静态节点和静态根节点
 |  |  |----to-function
-|  |  |----codegen
-|  |  |  |----
-|  |  |  |----
+|  |  |----codegen              AST转化render函数
+|  |  |  |----index             转化入口
+|  |  |  |----event             事件处理的函数生成，包括对各种修饰符的处理
 |  |  |  |----
 |  |  |----directives
 |  |  |  |----
@@ -74,6 +74,24 @@ vue2.x-learning
 |  |  |
 |  |  |----vdom
 |  |----platforms\web                 平台相关
+|  |  |----compiler         
+|  |  |  |----directives            v-model、v-html、v-text指令genCode阶段的处理
+|  |  |  |  |----index              
+|  |  |  |  |----model
+|  |  |  |  |----html
+|  |  |  |  |----text
+|  |  |  |----
+|  |  |  |----
+|  |  |  |----
+|  |  |  |----
+|  |  |----
+|  |  |----
+|  |  |----
+|  |  |----
+|  |  |----
+|  |  |----
+|  |  |----
+|  |  |----
 |  |  |----
 |  |  |----
 |  |  |----

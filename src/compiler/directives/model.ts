@@ -3,15 +3,18 @@ import { ASTElement, ASTModifiers } from 'types/compiler'
 /**
  * Cross-platform code generation for component v-model
  */
+// 处理v-model指令在组件或动态组件上的情况
 export function genComponentModel(
   el: ASTElement,
   value: string,
   modifiers: ASTModifiers | null
 ): void {
+  // 获取修饰符
   const { number, trim } = modifiers || {}
 
   const baseValueExpression = '$$v'
   let valueExpression = baseValueExpression
+  // 处理修饰符
   if (trim) {
     valueExpression =
       `(typeof ${baseValueExpression} === 'string'` +
@@ -21,8 +24,9 @@ export function genComponentModel(
   if (number) {
     valueExpression = `_n(${valueExpression})`
   }
+  // 生成赋值语句
   const assignment = genAssignmentCode(value, valueExpression)
-
+  // 挂载el.model
   el.model = {
     value: `(${value})`,
     expression: JSON.stringify(value),
@@ -33,8 +37,11 @@ export function genComponentModel(
 /**
  * Cross-platform codegen helper for generating v-model value assignment code.
  */
+// 返回v-model的指令的赋值语句
 export function genAssignmentCode(value: string, assignment: string): string {
+  // 解析v-model的值的各种写法
   const res = parseModel(value)
+  // 对普通属性和对象属性分别处理，因为对象属性可能会丢失响应式
   if (res.key === null) {
     return `${value}=${assignment}`
   } else {
@@ -64,6 +71,7 @@ type ModelParseResult = {
   key: string | null
 }
 
+// 处理v-model的value值的所有情况，并返回解析值
 export function parseModel(val: string): ModelParseResult {
   // Fix https://github.com/vuejs/vue/pull/7730
   // allow v-model="obj.val " (trailing whitespace)

@@ -21,5 +21,5 @@ export const baseOptions: CompilerOptions = {
   canBeLeftOpenTag,//可以不闭合的标签
   isReservedTag,//是否为保留标签
   getTagNamespace,//获取命名空间
-  staticKeys: genStaticKeys(modules)//静态关键词
+  staticKeys: genStaticKeys(modules)//静态属性，用于优化时标记静态节点
 }

@@ -1,3 +1,13 @@
+/**
+ * generate()函数生成render()函数并返回
+ * render()函数调用会生成虚拟DOM
+ * 
+ * 
+ * 
+ * 
+ */
+
+
 import { genHandlers } from './events'
 import baseDirectives from '../directives/index'
 import { camelize, no, extend, capitalize } from 'shared/util'
@@ -39,6 +49,7 @@ export class CodegenState {
     this.warn = options.warn || baseWarn
     this.transforms = pluckModuleFunction(options.modules, 'transformCode')
     this.dataGenFns = pluckModuleFunction(options.modules, 'genData')
+    // baseDirectives包括对v-on，v-bind，v-cloak的处理， options.directives包括对v-model、v-html、v-text的处理
     this.directives = extend(extend({}, baseDirectives), options.directives)
     const isReservedTag = options.isReservedTag || no
     this.maybeComponent = (el: ASTElement) =>
@@ -60,6 +71,8 @@ export function generate(
 ): CodegenResult {
   const state = new CodegenState(options)
   // fix #11483, Root level <script> tags should not be rendered.
+  // 生成code，如果没有传入ast，则生成'_c("div")'，如果根节点是script标签，则生成'null'
+  // 主逻辑在genElement()函数中
   const code = ast
     ? ast.tag === 'script'
       ? 'null'
@@ -71,16 +84,21 @@ export function generate(
   }
 }
 
+// ast生成render函数的主逻辑
 export function genElement(el: ASTElement, state: CodegenState): string {
+  // 使用pre字段标志元素是否处于v-pre指令中
   if (el.parent) {
     el.pre = el.pre || el.parent.pre
   }
 
   if (el.staticRoot && !el.staticProcessed) {
+    // 处理静态根节点 
     return genStatic(el, state)
   } else if (el.once && !el.onceProcessed) {
+    // 生成v-once的标签代码，如果在v-for中打上静态标记，如果不在，处理为静态节点
     return genOnce(el, state)
   } else if (el.for && !el.forProcessed) {
+    // 
     return genFor(el, state)
   } else if (el.if && !el.ifProcessed) {
     return genIf(el, state)
@@ -91,24 +109,32 @@ export function genElement(el: ASTElement, state: CodegenState): string {
   } else {
     // component or element
     let code
+    // 动态组件的代码生成
     if (el.component) {
       code = genComponent(el.component, el, state)
-    } else {
+    } 
+    // 原生标签和自定义组件的代码生成
+    else {
       let data
       const maybeComponent = state.maybeComponent(el)
+      // 有修饰的元素或使用v-pre指令的自定义组件，生成data的代码串
+      // 无修饰的元素不需要，因为本身没有各种属性
       if (!el.plain || (el.pre && maybeComponent)) {
         data = genData(el, state)
       }
 
       let tag: string | undefined
       // check if this is a component in <script setup>
+      // ???单文件组件相关
       const bindings = state.options.bindings
       if (maybeComponent && bindings && bindings.__isScriptSetup !== false) {
         tag = checkBindingType(bindings, el.tag)
       }
       if (!tag) tag = `'${el.tag}'`
-
+      // 生成children的代码
       const children = el.inlineTemplate ? null : genChildren(el, state, true)
+      // 生成代码格式大致为
+      // `_c(tag,{data},[_c(xxx),_v(exp),_e(text)....],normalizationType)`
       code = `_c(${tag}${
         data ? `,${data}` : '' // data
       }${
@@ -153,12 +179,17 @@ function checkBindingType(bindings: BindingMetadata, key: string) {
   }
 }
 
-// hoist static sub-trees out
+// 处理静态根节点
+// 1、将当前静态节点的渲染函数放到 staticRenderFns 数组中
+// 2、生成字符串 `_m(index, true or '')` 
+// 辅助函数_m()会调用staticRenderFns数组中index对应渲染函数
 function genStatic(el: ASTElement, state: CodegenState): string {
+  // 执行一次正常的处理流程后将渲染函数存储到staticRenderFns数组中，并返回对应_m(idx, true or '')调用渲染函数
   el.staticProcessed = true
   // Some elements (templates) need to behave differently inside of a v-pre
   // node.  All pre nodes are static roots, so we can use this as a location to
   // wrap a state change and reset it upon exiting the pre node.
+  // 为什么要保留state.pre ???
   const originalPreState = state.pre
   if (el.pre) {
     state.pre = el.pre
@@ -170,12 +201,17 @@ function genStatic(el: ASTElement, state: CodegenState): string {
   })`
 }
 
-// v-once
+// 生成v-once的标签代码
+// 如果在v-for范围内，打上静态节点标记
 function genOnce(el: ASTElement, state: CodegenState): string {
   el.onceProcessed = true
+  // v-if的情况
   if (el.if && !el.ifProcessed) {
     return genIf(el, state)
-  } else if (el.staticInFor) {
+  } 
+  // 对v-for内的情况
+  else if (el.staticInFor) {
+    // 获取在v-for中的分支的key值
     let key = ''
     let parent = el.parent
     while (parent) {
@@ -185,6 +221,7 @@ function genOnce(el: ASTElement, state: CodegenState): string {
       }
       parent = parent.parent
     }
+    // 对v-for没有key值的警告，并且不对v-once做处理
     if (!key) {
       __DEV__ &&
         state.warn(
@@ -193,12 +230,16 @@ function genOnce(el: ASTElement, state: CodegenState): string {
         )
       return genElement(el, state)
     }
+    // 对有key值的正常处理节点并在VNode上打上静态标记
     return `_o(${genElement(el, state)},${state.onceId++},${key})`
-  } else {
+  }
+  // 其他情况，直接处理为静态节点
+  else {
     return genStatic(el, state)
   }
 }
 
+// 生成v-if的标签代码
 export function genIf(
   el: any,
   state: CodegenState,
@@ -209,6 +250,7 @@ export function genIf(
   return genIfConditions(el.ifConditions.slice(), state, altGen, altEmpty)
 }
 
+// 生成从ifCondition字段代表的分支
 function genIfConditions(
   conditions: ASTIfConditions,
   state: CodegenState,
@@ -218,7 +260,8 @@ function genIfConditions(
   if (!conditions.length) {
     return altEmpty || '_e()'
   }
-
+  // 生成每一个condition的代码
+  // 格式大致为`(exp1)?block1:(exp2)?block2:exp3?block3:......`
   const condition = conditions.shift()!
   if (condition.exp) {
     return `(${condition.exp})?${genTernaryExp(
@@ -228,16 +271,18 @@ function genIfConditions(
     return `${genTernaryExp(condition.block)}`
   }
 
-  // v-if with v-once should generate code like (a)?_m(0):_m(1)
+  // 生成三元表达式中的一项
   function genTernaryExp(el) {
     return altGen
       ? altGen(el, state)
+      // block中可能存在v-once
       : el.once
       ? genOnce(el, state)
       : genElement(el, state)
   }
 }
 
+// 生成v-for标签的代码
 export function genFor(
   el: any,
   state: CodegenState,
@@ -249,6 +294,7 @@ export function genFor(
   const iterator1 = el.iterator1 ? `,${el.iterator1}` : ''
   const iterator2 = el.iterator2 ? `,${el.iterator2}` : ''
 
+  // 对组件上使用v-for必须添加key值作警告
   if (
     __DEV__ &&
     state.maybeComponent(el) &&
@@ -266,6 +312,7 @@ export function genFor(
   }
 
   el.forProcessed = true // avoid recursion
+  // 返回值格式：`_l(exp,function(alias,iterator1,iterator2){return restcode}))`
   return (
     `${altHelper || '_l'}((${exp}),` +
     `function(${alias}${iterator1}${iterator2}){` +
@@ -274,6 +321,27 @@ export function genFor(
   )
 }
 
+// 生成属性字符串,data的格式主要为：
+// `{
+// directives:[{ name, rawName, value, arg, expression , modifiers }, ...],
+// key:xxx,
+// ref:xxx,
+// refInFor:true,
+// pre:true,
+// tag:xxx,
+// staticClass: xxx, 
+// class: xxx,
+// staticStyle: xxx, 
+// style: xxx,
+// attrs:{name1:value1,name2:value2....}，
+// domProps:{name1:value1,name2:value2....}，
+// on:{!~&name1:[handler1,handler2],name2:handler3,...}，
+// nativeOn:_d(!~&name1:[handler1,handler2],name2:handler3,...,[!~&name3,[handler4,handler5],name4,handler6]),
+// slot:xxx,
+// scopedSlots:xxx,???
+// model:{value:xxx,callback:x,expression:xxx},
+// inlineTemplate:{render:xxx,staticRenderFns:xxx}
+// }`
 export function genData(el: ASTElement, state: CodegenState): string {
   let data = '{'
 
@@ -301,7 +369,7 @@ export function genData(el: ASTElement, state: CodegenState): string {
   if (el.component) {
     data += `tag:"${el.tag}",`
   }
-  // module data generation functions
+  // 调用platform中模块下的genData方法
   for (let i = 0; i < state.dataGenFns.length; i++) {
     data += state.dataGenFns[i](el)
   }
@@ -329,7 +397,7 @@ export function genData(el: ASTElement, state: CodegenState): string {
   if (el.scopedSlots) {
     data += `${genScopedSlots(el, el.scopedSlots, state)},`
   }
-  // component v-model
+  // 组件上的v-model
   if (el.model) {
     data += `model:{value:${el.model.value},callback:${el.model.callback},expression:${el.model.expression}},`
   }
@@ -340,41 +408,54 @@ export function genData(el: ASTElement, state: CodegenState): string {
       data += `${inlineTemplate},`
     }
   }
+  // 去掉末尾的逗号添加}
   data = data.replace(/,$/, '') + '}'
   // v-bind dynamic argument wrap
   // v-bind with dynamic arguments must be applied using the same v-bind object
   // merge helper so that class/style/mustUseProp attrs are handled correctly.
+  // 处理动态属性名的属性附加在data上
   if (el.dynamicAttrs) {
     data = `_b(${data},"${el.tag}",${genProps(el.dynamicAttrs)})`
   }
-  // v-bind data wrap
+  // 将v-bind的对象语法的形式的数据包装到data上
   if (el.wrapData) {
     data = el.wrapData(data)
   }
-  // v-on data wrap
+  // 将v-on的对象语法的形式的事件包装到data上
   if (el.wrapListeners) {
     data = el.wrapListeners(data)
   }
   return data
 }
 
+// 对v-on、v-bind、v-cloak、v-html、v-text执行一些函数挂载处理(不需要运行时)
+// v-model的处理：在组件上的挂载el.model(不需要运行时)，在input元素上的挂载对应的事件和属性绑定(需要运行时)
+// 需要运行时的指令会进行代码拼接返回
+// 返回值格式：directives:[{ name, rawName, value, expression , arg, modifiers }, ...]
 function genDirectives(el: ASTElement, state: CodegenState): string | void {
   const dirs = el.directives
   if (!dirs) return
   let res = 'directives:['
+  // 标记，用于标记指令是否需要在运行时完成的任务，比如 v-model 的 input 事件
   let hasRuntime = false
   let i, l, dir, needRuntime
+  // 遍历el.directives下的所有指令
   for (i = 0, l = dirs.length; i < l; i++) {
     dir = dirs[i]
     needRuntime = true
     const gen: DirectiveFunction = state.directives[dir.name]
+    // 执行vue定义的指令处理函数
     if (gen) {
+      // 执行指令的编译方法，如果指令还需要运行时完成一部分任务，则返回 true，如v-model(v-model在组件上时也不需要运行时)
+      // 如果只是在元素上挂载一些包裹字符串的方法，则返回false，如v-on、v-bind、v-cloak、v-html、v-text
       // compile-time directive that manipulates AST.
       // returns true if it also needs a runtime counterpart.
       needRuntime = !!gen(el, dir, state.warn)
     }
+    // 除了v-on、v-bind、v-cloak、v-html、v-text都会执行
     if (needRuntime) {
       hasRuntime = true
+      // 拼接单个指令{ name, rawName, value, expression , arg, modifiers }, 
       res += `{name:"${dir.name}",rawName:"${dir.rawName}"${
         dir.value
           ? `,value:(${dir.value}),expression:${JSON.stringify(dir.value)}`
@@ -385,21 +466,25 @@ function genDirectives(el: ASTElement, state: CodegenState): string | void {
     }
   }
   if (hasRuntime) {
+    // 只有指令存在运行时任务时，才需要返回 res，其他的会在genData时调用挂载的对应函数处理
     return res.slice(0, -1) + ']'
   }
 }
 
+// 
 function genInlineTemplate(
   el: ASTElement,
   state: CodegenState
 ): string | undefined {
   const ast = el.children[0]
+  // 内联模板必须只有一个元素子节点，其他情况做出警告
   if (__DEV__ && (el.children.length !== 1 || ast.type !== 1)) {
     state.warn(
       'Inline-template components must have exactly one child element.',
       { start: el.start }
     )
   }
+  // 
   if (ast && ast.type === 1) {
     const inlineRenderFns = generate(ast, state.options)
     return `inlineTemplate:{render:function(){${
@@ -409,7 +494,8 @@ function genInlineTemplate(
       .join(',')}]}`
   }
 }
-
+// ???
+// data += `${genScopedSlots(el, el.scopedSlots, state)},`
 function genScopedSlots(
   el: ASTElement,
   slots: { [key: string]: ASTElement },
@@ -419,6 +505,7 @@ function genScopedSlots(
   // components with only scoped slots to skip forced updates from parent.
   // but in some cases we have to bail-out of this optimization
   // for example if the slot contains dynamic names, has v-if or v-for on them...
+  // 是否需要强制更新
   let needsForceUpdate =
     el.for ||
     Object.keys(slots).some(key => {
@@ -510,6 +597,9 @@ function genScopedSlot(el: ASTElement, state: CodegenState): string {
   return `{key:${el.slotTarget || `"default"`},fn:${fn}${reverseProxy}}`
 }
 
+
+// 生成子节点的数组字符串，格式大致为
+// `[_c(xxx),_v(exp),_e(text)....],normalizationType`
 export function genChildren(
   el: ASTElement,
   state: CodegenState,
@@ -520,7 +610,8 @@ export function genChildren(
   const children = el.children
   if (children.length) {
     const el: any = children[0]
-    // optimize single v-for
+    // 只有一个不为template、slot，且有v-for指令的子节点
+    // 返回字符串 `genElement(el, state)的结果,normalizationType`
     if (
       children.length === 1 &&
       el.for &&
@@ -534,10 +625,13 @@ export function genChildren(
         : ``
       return `${(altGenElement || genElement)(el, state)}${normalizationType}`
     }
+    // 其他情况的子节点
     const normalizationType = checkSkip
       ? getNormalizationType(children, state.maybeComponent)
       : 0
+    // 
     const gen = altGenNode || genNode
+    // 文本节点和注释节点直接生成，元素节点递归
     return `[${children.map(c => gen(c, state)).join(',')}]${
       normalizationType ? `,${normalizationType}` : ''
     }`
@@ -548,16 +642,20 @@ export function genChildren(
 // 0: no normalization needed
 // 1: simple normalization needed (possible 1-level deep nested array)
 // 2: full normalization needed
+// normalizationType一共有三个可选值
 function getNormalizationType(
   children: Array<ASTNode>,
   maybeComponent: (el: ASTElement) => boolean
 ): number {
   let res = 0
+  // 所有遍历子节点
   for (let i = 0; i < children.length; i++) {
     const el: ASTNode = children[i]
+    // 只查询元素节点
     if (el.type !== 1) {
       continue
     }
+    // 元素或元素下的ifConditions的block有v-for或template标签、slot标签 返回值2
     if (
       needsNormalization(el) ||
       (el.ifConditions &&
@@ -566,6 +664,7 @@ function getNormalizationType(
       res = 2
       break
     }
+    // 元素或元素下的ifConditions的block为组件标签 返回值1
     if (
       maybeComponent(el) ||
       (el.ifConditions && el.ifConditions.some(c => maybeComponent(c.block)))
@@ -573,13 +672,15 @@ function getNormalizationType(
       res = 1
     }
   }
+  // 都不存在 返回值0
   return res
 }
-
+// 需要规范化的条件：有v-for或template标签、slot标签
 function needsNormalization(el: ASTElement): boolean {
   return el.for !== undefined || el.tag === 'template' || el.tag === 'slot'
 }
 
+// 根据节点类型生成元素、文本、注释节点
 function genNode(node: ASTNode, state: CodegenState): string {
   if (node.type === 1) {
     return genElement(node, state)
@@ -642,9 +743,13 @@ function genComponent(
   })`
 }
 
+// 传入属性对象，生成给定属性的字符串，处理动态属性名,最后处理为一个对象
+// 返回格式：`_d({name1:value1,name2:value2....},[name3,value3,name4,value4....])`
 function genProps(props: Array<ASTAttr>): string {
   let staticProps = ``
+  // 用于存放动态属性名的字符串
   let dynamicProps = ``
+  // 遍历所有属性
   for (let i = 0; i < props.length; i++) {
     const prop = props[i]
     const value = transformSpecialNewlines(prop.value)
@@ -654,6 +759,7 @@ function genProps(props: Array<ASTAttr>): string {
       staticProps += `"${prop.name}":${value},`
     }
   }
+  // slice(0,-1)去掉最后一个逗号
   staticProps = `{${staticProps.slice(0, -1)}}`
   if (dynamicProps) {
     return `_d(${staticProps},[${dynamicProps.slice(0, -1)}])`

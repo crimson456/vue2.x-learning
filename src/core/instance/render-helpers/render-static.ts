@@ -29,11 +29,14 @@ export function renderStatic(
  * Runtime helper for v-once.
  * Effectively it means marking the node as static with a unique key.
  */
+// `_o(${genElement(el, state)},${state.onceId++},${key})`
+// 为第一个参数
 export function markOnce(
   tree: VNode | Array<VNode>,
   index: number,
   key: string
 ) {
+  // el,`__once__0name`,true
   markStatic(tree, `__once__${index}${key ? `_${key}` : ``}`, true)
   return tree
 }

@@ -286,6 +286,7 @@ export function parseHTML(html, options: HTMLParserOptions) {
     const attrs: ASTAttr[] = new Array(l)
     for (let i = 0; i < l; i++) {
       const args = match.attrs[i]
+      // 分别处理=后面匹配到单引号，双引号，没有引号的情况
       const value = args[3] || args[4] || args[5] || ''
       const shouldDecodeNewlines =
         tagName === 'a' && args[1] === 'href'

@@ -166,7 +166,7 @@ export function parse(template: string, options: CompilerOptions): ASTElement {
     }
     // 处理节点之间的关系
     if (currentParent && !element.forbidden) {
-      // 如果存在v-else-if或v-else指令，则向对应v-if指令的元素ifConditions字段添加一项  ???作用
+      // 如果存在v-else-if或v-else指令，则向对应v-if指令的元素ifConditions字段添加一项 
       if (element.elseif || element.else) {
         processIfConditions(element, currentParent)
       } 
@@ -522,7 +522,7 @@ function processRawAttrs(el) {
       }
     }
   } else if (!el.pre) {
-    // non root node in pre blocks with no attributes
+    // 带有v-pre指令本身一定会有此属性，所以一定不是不修饰的
     el.plain = true
   }
 }
@@ -532,7 +532,7 @@ export function processElement(element: ASTElement, options: CompilerOptions) {
   processKey(element)
   // determine whether this is a plain element after
   // removing structural attributes
-  // 挂载element.plain用于标识el是否是一个普通元素    ???
+  // 挂载element.plain用于标识el是否是一个无修饰的元素(没有VNodeData)
   element.plain = !element.key && !element.scopedSlots && !element.attrsList.length
   // 获取ref值并挂载到element.ref上，检查父元素上是否有for字段挂载到element.refInFor字段
   processRef(element)
@@ -1018,7 +1018,7 @@ function processAttrs(el) {
         // 处理事件属性，将事件属性添加到el的events、nativeEvents字段
         addHandler(el, name, value, modifiers, false, warn, list[i], isDynamic)
       } 
-      // 其他指令的处理
+      // 其他指令的处理，v-bind的对象写法好像包含在此处
       else {
         // 指令名
         name = name.replace(dirRE, '')
@@ -1065,7 +1065,7 @@ function processAttrs(el) {
           )
         }
       }
-      // 静态绑定的属性直接添加到el.attrs
+      // 静态绑定的属性直接JSON.stringify()处理之后添加到el.attrs
       addAttr(el, name, JSON.stringify(value), list[i])
       // #6887 firefox doesn't update muted state if set via attribute
       // even immediately after element creation

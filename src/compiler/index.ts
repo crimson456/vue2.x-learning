@@ -13,7 +13,10 @@ export const createCompiler = createCompilerCreator(function baseCompile(
 ): CompiledResult {
   //模板生成ast
   const ast = parse(template.trim(), options)
+  // 注意 undefined !== false 的运行结果为true
+  // 浏览器端满足此情况要进行优化
   if (options.optimize !== false) {
+    // 优化ast,标记静态节点和静态根节点
     optimize(ast, options)
   }
   //ast转化render函数
@@ -36,8 +39,9 @@ tag                                            标签名
 attrsList                                      从模板上匹配到的属性(处理前)，形式为：
 attrsMap                                       从模板上匹配到的属性(处理前)，形式为
 attrs                                          处理后的属性存放位置
+dynamicAttrs                                   处理后的动态属性名存放位置
 props                                          处理后的DOM property存放位置
-pre                                            v-pre指令(是否存在)
+pre                                            v-pre指令(是否存在)      后续会标志元素节点是否处于v-pre作用域内
 ns                                             命名空间，SVG、MathML中的标签有此字段
 forbidden                                      标记为非服务端渲染时的禁用标签(一般为false，表示除了style和script标签外的标签)
 parent                                         父元素
@@ -63,17 +67,15 @@ component                                      动态组件名
 inlineTemplate                                 组件是否使用内联模板
 
 hasBindings                                    动态元素(元素上是否有指令)
-events、nativeEvents                           v-on的事件队列
+events、nativeEvents                           v-on的事件队列和原生事件(.native修饰的)队列的数组
 
 directives                                     除了处理过的指令之外的其他指令
 
 staticClass、classBinding                      静态、动态绑定class值
 staticStyle、styleBinding                      静态、动态绑定style值
 
-plain                                          标记是否为
+plain                                          标记是否为无修饰元素,没有key、子作用域插槽、属性的元素，或v-pre指令的子代元素中没有属性的元素
 isComment                                      标记是否为注释节点
-
-
 
 
 */
