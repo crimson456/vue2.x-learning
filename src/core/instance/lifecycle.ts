@@ -21,7 +21,7 @@ import VNode, { createEmptyVNode } from '../vdom/vnode'
 import { updateComponentListeners } from './events'
 import { resolveSlots } from './render-helpers/resolve-slots'
 import { toggleObserving } from '../observer/index'
-import { pushTarget, popTarget } from '../observer/dep'
+import { pushTarget, popTarget } from '../observer/dep'_withStripped
 import type { Component } from 'types/component'
 import type { MountedComponentVNode } from 'types/vnode'
 
@@ -37,6 +37,7 @@ import { currentInstance, setCurrentInstance } from 'v3/currentInstance'
 import { syncSetupProxy } from 'v3/apiSetup'
 
 export let activeInstance: any = null
+// 用于在更新子节点的期间修改$attrs和$listeners不触发响应式
 export let isUpdatingChildComponent: boolean = false
 
 export function setActiveInstance(vm: Component) {
@@ -51,6 +52,8 @@ export function initLifecycle(vm: Component) {
   const options = vm.$options
 
   // locate first non-abstract parent
+  // 挂载vm.$parent、vm.$children
+  // 父组件为第一个不是抽象的祖先组件(如keep-alive就是抽象组件，配置中有abstract字段)
   let parent = options.parent
   if (parent && !options.abstract) {
     while (parent.$options.abstract && parent.$parent) {
@@ -65,6 +68,7 @@ export function initLifecycle(vm: Component) {
   vm.$children = []
   vm.$refs = {}
 
+  // 继承父节点解析出来的provide
   vm._provided = parent ? parent._provided : Object.create(null)
   vm._watcher = null
   vm._inactive = null
@@ -77,32 +81,36 @@ export function initLifecycle(vm: Component) {
 export function lifecycleMixin(Vue: typeof Component) {
   Vue.prototype._update = function (vnode: VNode, hydrating?: boolean) {
     const vm: Component = this
+    // 挂载点
     const prevEl = vm.$el
+    // 上一次渲染的虚拟节点
     const prevVnode = vm._vnode
+    // 设置activeInstance为当前实例
     const restoreActiveInstance = setActiveInstance(vm)
+    // 新的虚拟节点
     vm._vnode = vnode
     // Vue.prototype.__patch__ is injected in entry points
     // based on the rendering backend used.
-
     //判断是否是第一次渲染，是则使用真实DOM，不是则使用上次的虚拟DOM进行patch
-    
-
     if (!prevVnode) {
       // initial render
-      //__patch__()会根据是否在浏览器端返回值，一般同patch()方法，patch()方法会对比两个虚拟节点进行最小量更新
+      //__patch__判断如果不在浏览器端则返回空函数，在浏览器端则和patch()相同方法会对比两个虚拟节点进行最小量更新
       vm.$el = vm.__patch__(vm.$el, vnode, hydrating, false /* removeOnly */)
     } else {
       // updates
       vm.$el = vm.__patch__(prevVnode, vnode)
     }
+    // 还原activeInstance为设置前的实例
     restoreActiveInstance()
     // update __vue__ reference
+    // 挂载点添加 __vue__ 字段作为实例的引用
     if (prevEl) {
       prevEl.__vue__ = null
     }
     if (vm.$el) {
       vm.$el.__vue__ = vm
     }
+    // ???
     // if parent is an HOC, update its $el as well
     let wrapper: Component | undefined = vm
     while (
@@ -164,6 +172,7 @@ export function lifecycleMixin(Vue: typeof Component) {
   }
 }
 
+// 挂载组件，观察更新组件的全过程收集依赖
 export function mountComponent(
   vm: Component,
   el: Element | null | undefined,
@@ -196,6 +205,7 @@ export function mountComponent(
   }
   callHook(vm, 'beforeMount')
 
+  // 定义updateComponent中执行_render()和_update()
   let updateComponent
   /* istanbul ignore if */
   if (__DEV__ && config.performance && mark) {
@@ -237,6 +247,7 @@ export function mountComponent(
   // we set this to vm._watcher inside the watcher's constructor
   // since the watcher's initial patch may call $forceUpdate (e.g. inside child
   // component's mounted hook), which relies on vm._watcher being already defined
+  // 创建渲染watcher
   new Watcher(
     vm,
     updateComponent,
@@ -256,6 +267,7 @@ export function mountComponent(
 
   // manually mounted instance, call mounted on self
   // mounted is called for render-created child components in its inserted hook
+  // 此处为根实例的mounted声明周期钩子触发,其他组件实例的mounted钩子在其vnode.data.hooks.insert中,在节点插入DOM时触发
   if (vm.$vnode == null) {
     vm._isMounted = true
     callHook(vm, 'mounted')
@@ -311,7 +323,9 @@ export function updateChildComponent(
   // update $attrs and $listeners hash
   // these are also reactive so they may trigger child update if the child
   // used them during render
+  // 更新实例上的$attrs
   const attrs = parentVnode.data.attrs || emptyObject
+  // 似乎是setup API相关
   if (vm._attrsProxy) {
     // force update if attrs are accessed and has changed since it may be
     // passed to a child component.
@@ -330,6 +344,7 @@ export function updateChildComponent(
   vm.$attrs = attrs
 
   // update listeners
+  // 更新实例上的$listeners和组件上监听的事件
   listeners = listeners || emptyObject
   const prevListeners = vm.$options._parentListeners
   if (vm._listenersProxy) {
@@ -345,6 +360,7 @@ export function updateChildComponent(
   updateComponentListeners(vm, listeners, prevListeners)
 
   // update props
+  // 更新实例上的props值，即vm._props
   if (propsData && vm.$options.props) {
     toggleObserving(false)
     const props = vm._props
@@ -361,6 +377,7 @@ export function updateChildComponent(
 
   // resolve slots + force update if has children
   if (needsForceUpdate) {
+    // ???
     vm.$slots = resolveSlots(renderChildren, parentVnode.context)
     vm.$forceUpdate()
   }

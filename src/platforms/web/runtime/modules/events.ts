@@ -13,17 +13,21 @@ import type { VNodeWithData } from 'types/vnode'
 // it's important to place the event as the first in the array because
 // the whole point is ensuring the v-model callback gets called before
 // user-attached handlers.
+// 处理genCode生成的节点中的事件的兼容兼容性问题
 function normalizeEvents(on) {
   /* istanbul ignore if */
+  // 处理生成vnode代码处理事件中ie的兼容性处理
   if (isDef(on[RANGE_TOKEN])) {
     // IE input[type=range] only supports `change` event
     const event = isIE ? 'change' : 'input'
+    // 将原本的__r转化为平台下的对应事件
     on[event] = [].concat(on[RANGE_TOKEN], on[event] || [])
     delete on[RANGE_TOKEN]
   }
   // This was originally intended to fix #4521 but no longer necessary
   // after 2.5. Keeping it for backwards compat with generated code from < 2.4
   /* istanbul ignore if */
+  // 处理__c对应的事件的兼容
   if (isDef(on[CHECKBOX_RADIO_TOKEN])) {
     on.change = [].concat(on[CHECKBOX_RADIO_TOKEN], on.change || [])
     delete on[CHECKBOX_RADIO_TOKEN]
@@ -32,6 +36,8 @@ function normalizeEvents(on) {
 
 let target: any
 
+// 处理once修饰符修饰的事件
+// 将事件处理为职系那个一次旧
 function createOnceHandler(event, handler, capture) {
   const _target = target // save current target element in closure
   return function onceHandler() {
@@ -47,12 +53,14 @@ function createOnceHandler(event, handler, capture) {
 // safe to exclude.
 const useMicrotaskFix = isUsingMicroTask && !(isFF && Number(isFF[1]) <= 53)
 
+// 调用DOM方法添加事件
 function add(
   name: string,
   handler: Function,
   capture: boolean,
   passive: boolean
 ) {
+  // ???
   // async edge case #6566: inner click event triggers patch, event handler
   // attached to outer element during patch, and triggered again. This
   // happens because browsers fire microtask ticks between event propagation.
@@ -90,7 +98,7 @@ function add(
     supportsPassive ? { capture, passive } : capture
   )
 }
-
+// 调用DOM方法移除事件
 function remove(
   name: string,
   handler: Function,
@@ -105,7 +113,9 @@ function remove(
   )
 }
 
+// 更新真实DOM节点的事件
 function updateDOMListeners(oldVnode: VNodeWithData, vnode: VNodeWithData) {
+  // 都没有定义事件则直接返回
   if (isUndef(oldVnode.data.on) && isUndef(vnode.data.on)) {
     return
   }
@@ -114,7 +124,9 @@ function updateDOMListeners(oldVnode: VNodeWithData, vnode: VNodeWithData) {
   // vnode is empty when removing all listeners,
   // and use old vnode dom element
   target = vnode.elm || oldVnode.elm
+  // 处理事件相关的兼容性问题
   normalizeEvents(on)
+  // 更新DOM上的事件
   updateListeners(on, oldOn, add, remove, createOnceHandler, vnode.context)
   target = undefined
 }

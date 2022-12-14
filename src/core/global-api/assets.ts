@@ -31,6 +31,7 @@ export function initAssetRegisters(Vue: GlobalAPI) {
         if (__DEV__ && type === 'component') {
           validateComponentName(id)
         }
+        // 组件的同步写法(第二个参数为一个options对象)，通过Vue.extend处理为子类构造函数存入
         if (type === 'component' && isPlainObject(definition)) {
           // @ts-expect-error
           definition.name = definition.name || id
@@ -39,6 +40,7 @@ export function initAssetRegisters(Vue: GlobalAPI) {
         if (type === 'directive' && isFunction(definition)) {
           definition = { bind: definition, update: definition }
         }
+        // 组件的异步写法(定义为工厂函数)，直接将工厂函数存入
         this.options[type + 's'][id] = definition
         return definition
       }

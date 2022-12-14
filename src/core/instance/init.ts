@@ -35,15 +35,16 @@ export function initMixin(Vue: typeof Component) {
     vm._scope = new EffectScope(true /* detached */)
     vm._scope._vm = true
 
-    //合并options,挂载$options
-    //组件调用
+    // 合并options,挂载$options
+    // 内部组件实例初始化时调用
     if (options && options._isComponent) {
       // optimize internal component instantiation
       // since dynamic options merging is pretty slow, and none of the
       // internal component options needs special treatment.
       initInternalComponent(vm, options as any)
-    } else {
-    //Vue初始化调用
+    } 
+    // 自身new创建实例时调用，包括Vue根实例初始化调用
+    else {
       vm.$options = mergeOptions(
         resolveConstructorOptions(vm.constructor as any),
         options || {},
@@ -51,7 +52,7 @@ export function initMixin(Vue: typeof Component) {
       )
     }
 
-    //vm._renderProxy的定义
+    //vm._renderProxy的定义,渲染时的代理，拦截with语法的访问，给出提示信息
     /* istanbul ignore else */
     if (__DEV__) {
       initProxy(vm)
@@ -60,23 +61,22 @@ export function initMixin(Vue: typeof Component) {
     }
     // expose real self
     vm._self = vm
-    //创建一些生命周期相关的属性，组件的父子关系的初始化
+    // 组件的父子关系的初始化 $parent 、 $children 、 $root
+    // 创建一些生命周期相关的属性和 $ref
     initLifecycle(vm)
-    //???
+    // 创建事件相关的属性
     initEvents(vm)
-    //???
+    // 渲染相关函数的挂载 _c $createElement
+    // 插槽相关的挂载 $slots $scopedSlots $vnode
     initRender(vm)
-
     //执行beforeCreate钩子中的函数
     callHook(vm, 'beforeCreate', undefined, false /* setContext */)
-    //???
+    // 解析inject字段，挂载在vm下
     initInjections(vm) // resolve injections before data/props
-    //挂载 数据(状态) 如data、method、computed
+    // 挂载 数据(状态) 如data、method、computed
     initState(vm) 
-    //???
+    // 解析provide字段，挂载在vm._provided下
     initProvide(vm) // resolve provide after data/props
-
-
     //执行created钩子中的函数
     callHook(vm, 'created')
 
@@ -95,6 +95,7 @@ export function initMixin(Vue: typeof Component) {
   }
 }
 
+// 内部组件调用
 export function initInternalComponent(
   vm: Component,
   options: InternalComponentOptions
@@ -117,22 +118,30 @@ export function initInternalComponent(
   }
 }
 
+// 用户直接new组件实例调用
 export function resolveConstructorOptions(Ctor: typeof Component) {
+  // 获取构造函数的options
   let options = Ctor.options
+  // 合并上一级构造函数的选项，递归调用
+  // 创建组件实例时会走这里
   if (Ctor.super) {
+    // 递归调用
     const superOptions = resolveConstructorOptions(Ctor.super)
     const cachedSuperOptions = Ctor.superOptions
     if (superOptions !== cachedSuperOptions) {
-      // super option changed,
-      // need to resolve new options.
+      // vm.superOptions用于缓存上级的所有选项的合并项
       Ctor.superOptions = superOptions
       // check if there are any late-modified/attached options (#4976)
+      // 返回所有更改项组成的对象
       const modifiedOptions = resolveModifiedOptions(Ctor)
-      // update base extend options
+      // 合并所有更改项
       if (modifiedOptions) {
         extend(Ctor.extendOptions, modifiedOptions)
       }
+      // 将更新后的上级构造函数选项合并到当前选项
+      // 更新的目的在于可能出现初始化合并选项后上级可能会添加混合等修改选项
       options = Ctor.options = mergeOptions(superOptions, Ctor.extendOptions)
+      // 用于调用自身
       if (options.name) {
         options.components[options.name] = Ctor
       }

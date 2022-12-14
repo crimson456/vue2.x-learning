@@ -13,6 +13,7 @@ export function createCompilerCreator(baseCompile: Function): Function {
       const errors: WarningMessage[] = []
       const tips: WarningMessage[] = []
 
+      // 定义warn函数，会将错误或者提示信息推入错误或提示的堆栈中
       let warn = (
         msg: WarningMessage,
         range: { start: number; end: number },
@@ -22,10 +23,10 @@ export function createCompilerCreator(baseCompile: Function): Function {
       }
       //合并编译的相关选项,生成finalOptions
       if (options) {
+        // 定义开发模式下的warn函数，会将错误或者提示信息及其位置推入错误或提示的堆栈中
         if (__DEV__ && options.outputSourceRange) {
           // $flow-disable-line
           const leadingSpaceLength = template.match(/^\s*/)![0].length
-
           warn = (
             msg: WarningMessage | string,
             range: { start: number; end: number },
@@ -65,13 +66,14 @@ export function createCompilerCreator(baseCompile: Function): Function {
       }
 
       finalOptions.warn = warn
-
+      // baseCompile()调用结果为: { ast , render , staticRenderFns }
       const compiled = baseCompile(template.trim(), finalOptions)
       if (__DEV__) {
         detectErrors(compiled.ast, warn)
       }
       compiled.errors = errors
       compiled.tips = tips
+      // compiled格式： { ast , render , staticRenderFns , errors , tips }
       return compiled
     }
 

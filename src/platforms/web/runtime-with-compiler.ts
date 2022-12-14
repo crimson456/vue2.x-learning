@@ -66,7 +66,7 @@ Vue.prototype.$mount = function (
       if (__DEV__ && config.performance && mark) {
         mark('compile')
       }
-
+      // 编译形成render()函数
       const { render, staticRenderFns } = compileToFunctions(
         template,
         {

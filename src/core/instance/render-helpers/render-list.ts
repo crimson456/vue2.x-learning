@@ -8,6 +8,7 @@ import VNode from 'core/vdom/vnode'
 
 // 生成包裹v-for中每项render函数的代码，执行结果会返回一个节点数组
 // 调用后会生成v-for元素的节点数组
+// 插槽代码生成调用后会生成一个对象的数组
 export function renderList(
   val: any,
   render: (val: any, keyOrIndex: string | number, index?: number) => VNode

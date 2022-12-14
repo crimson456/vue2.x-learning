@@ -19,6 +19,7 @@ export const MAX_UPDATE_COUNT = 100
 
 const queue: Array<Watcher> = []
 const activatedChildren: Array<Component> = []
+// has[watcher.id]用于去重
 let has: { [key: number]: true | undefined | null } = {}
 let circular: { [key: number]: number } = {}
 let waiting = false
@@ -68,6 +69,7 @@ if (inBrowser && !isIE) {
   }
 }
 
+// watcher队列的排序函数，普通逻辑为由小到大排序，有post成员的watcher排在最后
 const sortCompareFn = (a: Watcher, b: Watcher): number => {
   if (a.post) {
     if (!b.post) return 1
@@ -80,8 +82,10 @@ const sortCompareFn = (a: Watcher, b: Watcher): number => {
 /**
  * Flush both queues and run the watchers.
  */
+// 任务队列中处理watcher队列执行的函数
 function flushSchedulerQueue() {
   currentFlushTimestamp = getNow()
+  // flushing标志位用于标记是否处于watcher队列的处理中
   flushing = true
   let watcher, id
 
@@ -93,19 +97,24 @@ function flushSchedulerQueue() {
   //    user watchers are created before the render watcher)
   // 3. If a component is destroyed during a parent component's watcher run,
   //    its watchers can be skipped.
+  // 根据watcher的id由小到大排序(有post成员的watcher排到最后)
   queue.sort(sortCompareFn)
 
   // do not cache length because more watchers might be pushed
   // as we run existing watchers
+  // 处理每一项watcher的更新
   for (index = 0; index < queue.length; index++) {
     watcher = queue[index]
+    // 调用渲染watcher上的before函数，该函数中触发vue实例的beforeUpdate钩子
     if (watcher.before) {
       watcher.before()
     }
     id = watcher.id
     has[id] = null
+    // 调用watcher上的更新函数
     watcher.run()
     // in dev build, check and stop circular updates.
+    // 对循环调用更新做出警告
     if (__DEV__ && has[id] != null) {
       circular[id] = (circular[id] || 0) + 1
       if (circular[id] > MAX_UPDATE_COUNT) {
@@ -121,14 +130,21 @@ function flushSchedulerQueue() {
     }
   }
 
+  // ???
   // keep copies of post queues before resetting state
   const activatedQueue = activatedChildren.slice()
   const updatedQueue = queue.slice()
-
+  
+  // 所有更新函数调用结束
+  // 重置刷新和等待标志位为false
+  // 刷新标志位:用于标记处于刷新阶段内部,嵌套调用watcher时内部可能有不同处理
+  // 等待标志位:用于标记已经将刷新任务队列
   resetSchedulerState()
 
   // call component updated and activated hooks
+  // ???
   callActivatedHooks(activatedQueue)
+  // 依次调用所有渲染watcher的updated声明周期钩子
   callUpdatedHooks(updatedQueue)
 
   // devtool hook
@@ -138,6 +154,7 @@ function flushSchedulerQueue() {
   }
 }
 
+// 调用队列中所有渲染watcher的updated声明周期钩子
 function callUpdatedHooks(queue: Watcher[]) {
   let i = queue.length
   while (i--) {
@@ -172,22 +189,28 @@ function callActivatedHooks(queue) {
  * Jobs with duplicate IDs will be skipped unless it's
  * pushed when the queue is being flushed.
  */
+// 将渲染watcher放入执行队列中
 export function queueWatcher(watcher: Watcher) {
-  //去重
+  // 去掉重复的watcher
   const id = watcher.id
   if (has[id] != null) {
     return
   }
-  
+  // ???
   if (watcher === Dep.target && watcher.noRecurse) {
     return
   }
-
+  // 标志对应id的watcher已在处理队列
   has[id] = true
+
+  // 不处于 处理watcher队列中每一项的更新的阶段中(正在调用flushSchedulerQueue函数) 的情况 ，放入队尾
+  // 一般情况都是在此分支
   if (!flushing) {
     queue.push(watcher)
-  } else {
-    // 如果处于刷新队列函数中的处理，将对应watcher插入在相应位置上
+  } 
+  // 处于 处理watcher队列中每一项的更新的阶段中(正在调用flushSchedulerQueue函数) 的情况 ，按watcher的id顺序插入
+  // 如 计算属性watcher的回调中触发了某个响应式数据 在此分支
+  else {
     // if already flushing, splice the watcher based on its id
     // if already past its id, it will be run next immediately.
     let i = queue.length - 1
@@ -196,14 +219,18 @@ export function queueWatcher(watcher: Watcher) {
     }
     queue.splice(i + 1, 0, watcher)
   }
+
   // queue the flush
+  // 将 处理watcher队列中每一项的更新的函数flushSchedulerQueue 放入某个任务队列中
   if (!waiting) {
+    // waiting标志位用于确保每一次任务轮询阶段只将该函数放入任务队列一次
     waiting = true
 
     if (__DEV__ && !config.async) {
       flushSchedulerQueue()
       return
     }
+    // nextTick为Vue内部实现的判断兼容性进行优雅降级选择的一个任务队列
     nextTick(flushSchedulerQueue)
   }
 }

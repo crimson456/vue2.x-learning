@@ -2,10 +2,13 @@ import VNode from 'core/vdom/vnode'
 import { isDef, isObject } from 'shared/util'
 import type { VNodeData, VNodeWithData } from 'types/vnode'
 
+// 返回静态和动态绑定的class拼接的字符串
 export function genClassForVnode(vnode: VNodeWithData): string {
   let data = vnode.data
   let parentNode: VNode | VNodeWithData | undefined = vnode
   let childNode: VNode | VNodeWithData = vnode
+  // 父节点为外层节点(当前创建的节点)，子节点是组件render函数创建的节点片段的第一个节点(可能有递归的情况)
+  // 合并内层data中的class
   while (isDef(childNode.componentInstance)) {
     childNode = childNode.componentInstance._vnode!
     if (childNode && childNode.data) {
@@ -13,14 +16,16 @@ export function genClassForVnode(vnode: VNodeWithData): string {
     }
   }
   // @ts-expect-error parentNode.parent not VNodeWithData
+  // 合并外层data中的class
   while (isDef((parentNode = parentNode.parent))) {
     if (parentNode && parentNode.data) {
       data = mergeClassData(data, parentNode.data)
     }
   }
+
   return renderClass(data.staticClass!, data.class)
 }
-
+// 合并class、staticClass字段
 function mergeClassData(
   child: VNodeData,
   parent: VNodeData
@@ -34,6 +39,7 @@ function mergeClassData(
   }
 }
 
+// 拼接动态和静态绑定的class
 export function renderClass(
   staticClass: string | null | undefined,
   dynamicClass: any
@@ -44,7 +50,7 @@ export function renderClass(
   /* istanbul ignore next */
   return ''
 }
-
+// 合并字符串
 export function concat(a?: string | null, b?: string | null): string {
   return a ? (b ? a + ' ' + b : a) : b || ''
 }

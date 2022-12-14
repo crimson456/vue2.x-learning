@@ -11,6 +11,7 @@ import type { VNodeWithData } from 'types/vnode'
 
 const cssVarRE = /^--/
 const importantRE = /\s*!important$/
+// 调用dom方法设置style
 const setProp = (el, name, val) => {
   /* istanbul ignore if */
   if (cssVarRE.test(name)) {
@@ -39,6 +40,7 @@ const setProp = (el, name, val) => {
 const vendorNames = ['Webkit', 'Moz', 'ms']
 
 let emptyStyle
+// 规范化style属性的名称
 const normalize = cached(function (prop) {
   emptyStyle = emptyStyle || document.createElement('div').style
   prop = camelize(prop)
@@ -46,6 +48,7 @@ const normalize = cached(function (prop) {
     return prop
   }
   const capName = prop.charAt(0).toUpperCase() + prop.slice(1)
+  // 添加前缀
   for (let i = 0; i < vendorNames.length; i++) {
     const name = vendorNames[i] + capName
     if (name in emptyStyle) {
@@ -54,10 +57,11 @@ const normalize = cached(function (prop) {
   }
 })
 
+// 更新dom上的style
 function updateStyle(oldVnode: VNodeWithData, vnode: VNodeWithData) {
   const data = vnode.data
   const oldData = oldVnode.data
-
+  // 如果都不存在内联内联style直接返回
   if (
     isUndef(data.staticStyle) &&
     isUndef(data.style) &&
@@ -74,7 +78,7 @@ function updateStyle(oldVnode: VNodeWithData, vnode: VNodeWithData) {
 
   // if static style exists, stylebinding already merged into it when doing normalizeStyleData
   const oldStyle = oldStaticStyle || oldStyleBinding
-
+  // 将style转化为对象形式
   const style = normalizeStyleBinding(vnode.data.style) || {}
 
   // store normalized style under a different key for next diff
@@ -82,13 +86,16 @@ function updateStyle(oldVnode: VNodeWithData, vnode: VNodeWithData) {
   // to mutate it.
   vnode.data.normalizedStyle = isDef(style.__ob__) ? extend({}, style) : style
 
+  // 获取当前标签的style属性(包括上层组件和下层组件)
   const newStyle = getStyle(vnode, true)
 
+  // 移除新节点中没有的旧style属性
   for (name in oldStyle) {
     if (isUndef(newStyle[name])) {
       setProp(el, name, '')
     }
   }
+  // 更新新节点的style属性
   for (name in newStyle) {
     cur = newStyle[name]
     if (cur !== oldStyle[name]) {

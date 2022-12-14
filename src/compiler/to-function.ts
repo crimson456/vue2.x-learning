@@ -19,8 +19,8 @@ function createFunction(code, errors) {
 }
 
 export function createCompileToFunctionFn(compile: Function): Function {
+  // 使用闭包缓存编译的结果，键值为[分隔符+模板]
   const cache = Object.create(null)
-
   return function compileToFunctions(
     template: string,
     options?: CompilerOptions,
@@ -32,7 +32,8 @@ export function createCompileToFunctionFn(compile: Function): Function {
 
     /* istanbul ignore if */
     if (__DEV__) {
-      // detect possible CSP restriction
+      // detect possible CSP(Content Security Policy) restriction
+      // 验证安全策略是否支持new Function的语法
       try {
         new Function('return 1')
       } catch (e: any) {
@@ -49,17 +50,21 @@ export function createCompileToFunctionFn(compile: Function): Function {
     }
 
     // check cache
+    // 设置缓存，将编译的结果缓存在闭包中cache对象下的 [分隔符+模板] 字段下
     const key = options.delimiters
       ? String(options.delimiters) + template
       : template
+    // 如果已经编译过直接从缓存中获取结果
     if (cache[key]) {
       return cache[key]
     }
 
     // compile
+    // compiled格式: { ast , render , staticRenderFns , errors , tips }
     const compiled = compile(template, options)
 
     // check compilation errors/tips
+    // 将编译过程中的错误堆栈和提示信息取出并进行输出
     if (__DEV__) {
       if (compiled.errors && compiled.errors.length) {
         if (options.outputSourceRange) {
@@ -89,6 +94,7 @@ export function createCompileToFunctionFn(compile: Function): Function {
     }
 
     // turn code into functions
+    // 将编译的代码字符串生成函数
     const res: any = {}
     const fnGenErrors: any[] = []
     res.render = createFunction(compiled.render, fnGenErrors)
@@ -100,6 +106,7 @@ export function createCompileToFunctionFn(compile: Function): Function {
     // this should only happen if there is a bug in the compiler itself.
     // mostly for codegen development use
     /* istanbul ignore if */
+    // 处理代码生成函数的错误并输出
     if (__DEV__) {
       if ((!compiled.errors || !compiled.errors.length) && fnGenErrors.length) {
         warn(
@@ -113,7 +120,8 @@ export function createCompileToFunctionFn(compile: Function): Function {
         )
       }
     }
-
+    // 缓存结果并输出
+    // 结果格式:{ render , staticRenderFns }
     return (cache[key] = res)
   }
 }

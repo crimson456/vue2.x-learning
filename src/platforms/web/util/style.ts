@@ -2,6 +2,7 @@ import VNode from 'core/vdom/vnode'
 import { cached, extend, toObject } from 'shared/util'
 import type { VNodeData, VNodeWithData } from 'types/vnode'
 
+// 将字符串形式的style转化为对象形式
 export const parseStyleText = cached(function (cssText) {
   const res = {}
   const listDelimiter = /;(?![^(]*\))/g
@@ -16,6 +17,7 @@ export const parseStyleText = cached(function (cssText) {
 })
 
 // merge static and dynamic style data on the same vnode
+// 合并动态绑定和静态绑定的style
 function normalizeStyleData(data: VNodeData): Record<string, any> {
   const style = normalizeStyleBinding(data.style)
   // static style is pre-processed into an object during compilation
@@ -24,6 +26,7 @@ function normalizeStyleData(data: VNodeData): Record<string, any> {
 }
 
 // normalize possible array / string values into Object
+// 将数组和字符串形式的动态绑定style值转化为对象值
 export function normalizeStyleBinding(bindingStyle: any): Record<string, any> {
   if (Array.isArray(bindingStyle)) {
     return toObject(bindingStyle)
@@ -38,12 +41,13 @@ export function normalizeStyleBinding(bindingStyle: any): Record<string, any> {
  * parent component style should be after child's
  * so that parent component's style could override it
  */
+// 获取节点的style属性
 export function getStyle(vnode: VNodeWithData, checkChild: boolean): Object {
   const res = {}
   let styleData
-
   if (checkChild) {
     let childNode: VNodeWithData | VNode = vnode
+    // 递归组件内第一个标签，合并style属性
     while (childNode.componentInstance) {
       childNode = childNode.componentInstance._vnode!
       if (
@@ -55,13 +59,14 @@ export function getStyle(vnode: VNodeWithData, checkChild: boolean): Object {
       }
     }
   }
-
+  // 合并当前标签的style
   if ((styleData = normalizeStyleData(vnode.data))) {
     extend(res, styleData)
   }
 
   let parentNode: VNodeWithData | VNode | undefined = vnode
   // @ts-expect-error parentNode.parent not VNodeWithData
+  // 递归所有外层父组件标签，合并style属性
   while ((parentNode = parentNode.parent)) {
     if (parentNode.data && (styleData = normalizeStyleData(parentNode.data))) {
       extend(res, styleData)

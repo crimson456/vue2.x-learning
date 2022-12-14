@@ -14,10 +14,9 @@ import type { VNodeData } from 'types/vnode'
 /**
  * Runtime helper for merging v-bind="object" into a VNode's data.
  */
-// _d({name1:value1,name2:value2....},[name3,value3,name4,value4....])
 // _b(${code},'${el.tag}',${dir.value},
 // _b(${data},"${el.tag}",${genProps(el.dynamicAttrs)})
-// 将第三个参数上的属性附加到第一个属性的attrs等字段上，用于将动态绑定的属性附加在data对象上
+// 将第三个参数上的属性附加到第一个属性的attrs等字段上，用于将动态绑定的属性、对象写法的属性附加在data对象上
 export function bindObjectProps(
   data: any,
   tag: string,

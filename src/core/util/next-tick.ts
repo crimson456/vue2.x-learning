@@ -32,8 +32,11 @@ export let isUsingMicroTask = false
 const callbacks: Array<Function> = []
 let pending = false
 
+// 依次调用回调数组中的回调函数
 function flushCallbacks() {
   pending = false
+  // 此处可处理嵌套调用nextTick方法
+  // 如nextTick方法中有调用其他响应数据更新,就会触发新的nextTick方法
   const copies = callbacks.slice(0)
   callbacks.length = 0
   for (let i = 0; i < copies.length; i++) {
@@ -61,6 +64,9 @@ let timerFunc
 // completely stops working after triggering a few times... so, if native
 // Promise is available, we will use it:
 /* istanbul ignore next, $flow-disable-line */
+
+// 任务队列的降级处理
+
 if (typeof Promise !== 'undefined' && isNative(Promise)) {
   const p = Promise.resolve()
   timerFunc = () => {
@@ -108,6 +114,7 @@ if (typeof Promise !== 'undefined' && isNative(Promise)) {
   }
 }
 
+// nextTick方法主逻辑 
 export function nextTick(): Promise<void>
 export function nextTick<T>(this: T, cb: (this: T, ...args: any[]) => any): void
 export function nextTick<T>(cb: (this: T, ...args: any[]) => any, ctx: T): void
@@ -116,6 +123,7 @@ export function nextTick<T>(cb: (this: T, ...args: any[]) => any, ctx: T): void
  */
 export function nextTick(cb?: (...args: any[]) => any, ctx?: object) {
   let _resolve
+  // 向回调数组推入回调函数
   callbacks.push(() => {
     if (cb) {
       try {
@@ -123,15 +131,20 @@ export function nextTick(cb?: (...args: any[]) => any, ctx?: object) {
       } catch (e: any) {
         handleError(e, ctx, 'nextTick')
       }
-    } else if (_resolve) {
+    } 
+    // 没有提供参数的情况,promise的兼容调用
+    else if (_resolve) {
       _resolve(ctx)
     }
   })
+  // 
   if (!pending) {
     pending = true
+    // 此函数为降级处理的某个任务队列的调用,将 依次调用所有回调函数 的操作封装在此任务队列中
     timerFunc()
   }
   // $flow-disable-line
+  // 没有提供参数的情况,且支持promise语法的环境返回一个promise的兼容处理
   if (!cb && typeof Promise !== 'undefined') {
     return new Promise(resolve => {
       _resolve = resolve

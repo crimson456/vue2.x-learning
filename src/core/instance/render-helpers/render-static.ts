@@ -4,6 +4,8 @@ import { isArray } from 'core/util'
 /**
  * Runtime helper for rendering static trees.
  */
+// `_m(index, true or '')` 
+// 
 export function renderStatic(
   index: number,
   isInFor: boolean
@@ -30,7 +32,7 @@ export function renderStatic(
  * Effectively it means marking the node as static with a unique key.
  */
 // `_o(${genElement(el, state)},${state.onceId++},${key})`
-// 为第一个参数
+// 为第一个参数为需要标记的节点(数组情况应该是v-for和v-once一起使用的时候))，添加第二个参数和第三个参数拼接的标记
 export function markOnce(
   tree: VNode | Array<VNode>,
   index: number,

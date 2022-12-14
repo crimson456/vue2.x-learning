@@ -98,13 +98,16 @@ export function genElement(el: ASTElement, state: CodegenState): string {
     // 生成v-once的标签代码，如果在v-for中打上静态标记，如果不在，处理为静态节点
     return genOnce(el, state)
   } else if (el.for && !el.forProcessed) {
-    // 
+    // 生成v-for的标签代码
     return genFor(el, state)
   } else if (el.if && !el.ifProcessed) {
+    // 生成v-if的标签代码
     return genIf(el, state)
   } else if (el.tag === 'template' && !el.slotTarget && !state.pre) {
+    // 生成普通template(不对应插槽且不在v-pre中)的标签代码
     return genChildren(el, state) || 'void 0'
   } else if (el.tag === 'slot') {
+    // 生成插槽的代码
     return genSlot(el, state)
   } else {
     // component or element
@@ -239,7 +242,7 @@ function genOnce(el: ASTElement, state: CodegenState): string {
   }
 }
 
-// 生成v-if的标签代码
+// 生成v-if的标签代码，三元表达式语法
 export function genIf(
   el: any,
   state: CodegenState,
@@ -282,7 +285,7 @@ function genIfConditions(
   }
 }
 
-// 生成v-for标签的代码
+// 生成v-for的标签代码，用_l包裹，执行时生成对应节点数组
 export function genFor(
   el: any,
   state: CodegenState,
@@ -337,8 +340,8 @@ export function genFor(
 // domProps:{name1:value1,name2:value2....}，
 // on:{!~&name1:[handler1,handler2],name2:handler3,...}，
 // nativeOn:_d(!~&name1:[handler1,handler2],name2:handler3,...,[!~&name3,[handler4,handler5],name4,handler6]),
-// slot:xxx,
-// scopedSlots:xxx,???
+// slot:slotTarget,
+// scopedSlots:{ $stable:xxx, $key:xxx, slotTarget:fn, ... },
 // model:{value:xxx,callback:x,expression:xxx},
 // inlineTemplate:{render:xxx,staticRenderFns:xxx}
 // }`
@@ -390,10 +393,12 @@ export function genData(el: ASTElement, state: CodegenState): string {
   }
   // slot target
   // only for non-scoped slots
+  // 普通插槽的插槽目标名
   if (el.slotTarget && !el.slotScope) {
     data += `slot:${el.slotTarget},`
   }
   // scoped slots
+  // 作用域插槽对应的渲染函数
   if (el.scopedSlots) {
     data += `${genScopedSlots(el, el.scopedSlots, state)},`
   }
@@ -471,7 +476,7 @@ function genDirectives(el: ASTElement, state: CodegenState): string | void {
   }
 }
 
-// 
+// 生成内联模板并且保存data下的inlineTemplate字段下
 function genInlineTemplate(
   el: ASTElement,
   state: CodegenState
@@ -484,7 +489,7 @@ function genInlineTemplate(
       { start: el.start }
     )
   }
-  // 
+  // 生成内联模板并拼接成render函数调用的形式
   if (ast && ast.type === 1) {
     const inlineRenderFns = generate(ast, state.options)
     return `inlineTemplate:{render:function(){${
@@ -494,7 +499,7 @@ function genInlineTemplate(
       .join(',')}]}`
   }
 }
-// ???
+// 生成data字段下的scopedSlots字段
 // data += `${genScopedSlots(el, el.scopedSlots, state)},`
 function genScopedSlots(
   el: ASTElement,
@@ -528,7 +533,9 @@ function genScopedSlots(
   // and skip force updating ones that do not actually use scope variables.
   if (!needsForceUpdate) {
     let parent = el.parent
+    // 递归父节点
     while (parent) {
+      // 如果节点处于另一个作用域插槽内或处于for的某个分支下，则需要强制更新???
       if (
         (parent.slotScope && parent.slotScope !== emptySlotScopeToken) ||
         parent.for
@@ -536,13 +543,15 @@ function genScopedSlots(
         needsForceUpdate = true
         break
       }
+      // 如果节点处于if的某个分支，则需要key???
       if (parent.if) {
         needsKey = true
       }
       parent = parent.parent
     }
   }
-
+  // 生成每个作用域插槽的代码
+  // generatedSlots 结果形式为：{ key:xxx, fn:xxx } 对象，或以此对象为成员的数组 以逗号拼接组成的字符串
   const generatedSlots = Object.keys(slots)
     .map(key => genScopedSlot(slots[key], state))
     .join(',')
@@ -563,6 +572,7 @@ function hash(str) {
   return hash >>> 0
 }
 
+// 返回元素是否有slot子元素
 function containsSlotChild(el: ASTNode): boolean {
   if (el.type === 1) {
     if (el.tag === 'slot') {
@@ -573,16 +583,23 @@ function containsSlotChild(el: ASTNode): boolean {
   return false
 }
 
+// 生成单个作用域插槽的代码
+// 返回值形式为 { key:xxx, fn:xxx } 对象，或以此对象为成员的数组
+// key表示插槽目标，fn表示插槽的render函数
 function genScopedSlot(el: ASTElement, state: CodegenState): string {
   const isLegacySyntax = el.attrsMap['slot-scope']
+  // 插槽上有v-if语法，生成三元表达式语法
+  // 此处三元表达式后调用会产生一个对象，形式为{ key:xxx, fn:xxx } 
   if (el.if && !el.ifProcessed && !isLegacySyntax) {
     return genIf(el, state, genScopedSlot, `null`)
   }
+  // 插槽上有v-for语法，生成_l函数包裹的代码
+  // 此处_l函数调用后会生成一个对象数组，其中的成员都为 { key:xxx, fn:xxx } 形式
   if (el.for && !el.forProcessed) {
     return genFor(el, state, genScopedSlot)
   }
-  const slotScope =
-    el.slotScope === emptySlotScopeToken ? `` : String(el.slotScope)
+  // 作用域插槽使用的代名
+  const slotScope = el.slotScope === emptySlotScopeToken ? `` : String(el.slotScope)
   const fn =
     `function(${slotScope}){` +
     `return ${
@@ -690,7 +707,7 @@ function genNode(node: ASTNode, state: CodegenState): string {
     return genText(node)
   }
 }
-
+// 生成文本节点
 export function genText(text: ASTText | ASTExpression): string {
   return `_v(${
     text.type === 2
@@ -698,15 +715,18 @@ export function genText(text: ASTText | ASTExpression): string {
       : transformSpecialNewlines(JSON.stringify(text.text))
   })`
 }
-
+// 生成注释节点的代码
+// 返回格式:_t(slotName, children, attrs, bind) 
 export function genComment(comment: ASTText): string {
   return `_e(${JSON.stringify(comment.text)})`
 }
 
+// 生成插槽的代码
 function genSlot(el: ASTElement, state: CodegenState): string {
   const slotName = el.slotName || '"default"'
   const children = genChildren(el, state)
   let res = `_t(${slotName}${children ? `,function(){return ${children}}` : ''}`
+  // 获取属性
   const attrs =
     el.attrs || el.dynamicAttrs
       ? genProps(
@@ -718,6 +738,7 @@ function genSlot(el: ASTElement, state: CodegenState): string {
           }))
         )
       : null
+  // 获取v-bind后面直接跟对象的情况的属性
   const bind = el.attrsMap['v-bind']
   if ((attrs || bind) && !children) {
     res += `,null`
@@ -728,10 +749,13 @@ function genSlot(el: ASTElement, state: CodegenState): string {
   if (bind) {
     res += `${attrs ? '' : ',null'},${bind}`
   }
+  // _t(slotName, children, attrs, bind) 
+  // 缺少的参数用null填补
   return res + ')'
 }
 
 // componentName is el.component, take it as argument to shun flow's pessimistic refinement
+// 生成动态组件的代码
 function genComponent(
   componentName: string,
   el: ASTElement,

@@ -57,7 +57,7 @@ const sharedPropertyDefinition = {
   set: noop
 }
 
-//用于将vm._data代理到vm上
+//用于将_data、_props代理到vm上
 export function proxy(target: Object, sourceKey: string, key: string) {
   sharedPropertyDefinition.get = function proxyGetter() {
     return this[sourceKey][key]
@@ -72,7 +72,6 @@ export function initState(vm: Component) {
   const opts = vm.$options
   //挂载props
   if (opts.props) initProps(vm, opts.props)
-
   // Composition API
   initSetup(vm)
   //挂载method
@@ -157,6 +156,7 @@ function initData(vm: Component) {
   let data: any = vm.$options.data
   //data字段是函数返回值或者
   data = vm._data = isFunction(data) ? getData(data, vm) : data || {}
+  // 警告data为函数没有返回值的情况
   if (!isPlainObject(data)) {
     data = {}
     __DEV__ &&
@@ -171,13 +171,16 @@ function initData(vm: Component) {
   const props = vm.$options.props
   const methods = vm.$options.methods
   let i = keys.length
+  // 遍历data上的每一项
   while (i--) {
     const key = keys[i]
+    // 检查同名methed
     if (__DEV__) {
       if (methods && hasOwn(methods, key)) {
         warn(`Method "${key}" has already been defined as a data property.`, vm)
       }
     }
+    // 检查同名props
     if (props && hasOwn(props, key)) {
       __DEV__ &&
         warn(
@@ -185,15 +188,18 @@ function initData(vm: Component) {
             `Use prop default value instead.`,
           vm
         )
-    } else if (!isReserved(key)) {
+    } 
+    // 检查如果不是以$或者_开头，则代理到vm上($和_开头为Vue内部保留使用)
+    else if (!isReserved(key)) {
       proxy(vm, `_data`, key)
     }
   }
-  // observe data
+  // 观察vm._data对象
   const ob = observe(data)
   ob && ob.vmCount++
 }
 
+// 调用data的函数获取结果对象(关闭了依赖收集，防止错误的收集)
 export function getData(data: Function, vm: Component): any {
   // #7573 disable dep collection when invoking data getters
   pushTarget()
@@ -384,6 +390,7 @@ function createWatcher(
   return vm.$watch(expOrFn, handler, options)
 }
 
+// 暴露$data、$props、$set、$delete、$watch
 export function stateMixin(Vue: typeof Component) {
   // flow somehow has problems with directly declared definition object
   // when using Object.defineProperty, so we have to procedurally build up

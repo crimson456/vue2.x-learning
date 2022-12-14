@@ -43,7 +43,7 @@ export function initExtend(Vue: GlobalAPI) {
     if (__DEV__ && name) {
       validateComponentName(name)
     }
-
+    // ???为什么形参添加this
     const Sub = function VueComponent(this: any, options: any) {
       this._init(options)
     } as unknown as typeof Component

@@ -13,6 +13,7 @@ export function initEvents(vm: Component) {
   vm._events = Object.create(null)
   vm._hasHookEvent = false
   // init parent attached events
+  // 组件初始化时此处的_parentListeners为组件节点创建时data.on字段
   const listeners = vm.$options._parentListeners
   if (listeners) {
     updateComponentListeners(vm, listeners)
@@ -20,7 +21,7 @@ export function initEvents(vm: Component) {
 }
 
 let target: any
-
+// ???
 function add(event, fn) {
   target.$on(event, fn)
 }
@@ -45,14 +46,7 @@ export function updateComponentListeners(
   oldListeners?: Object | null
 ) {
   target = vm
-  updateListeners(
-    listeners,
-    oldListeners || {},
-    add,
-    remove,
-    createOnceHandler,
-    vm
-  )
+  updateListeners( listeners, oldListeners || {}, add, remove, createOnceHandler, vm )
   target = undefined
 }
 

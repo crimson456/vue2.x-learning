@@ -312,6 +312,9 @@ export function validateComponentName(name: string) {
  * Ensure all props option syntax are normalized into the
  * Object-based format.
  */
+// 规范化props字段
+// 规范为结果格式：
+// props:{name:{type:xxx,required:xxx,......}}
 function normalizeProps(options: Record<string, any>, vm?: Component | null) {
   const props = options.props
   if (!props) return
@@ -347,6 +350,9 @@ function normalizeProps(options: Record<string, any>, vm?: Component | null) {
 /**
  * Normalize all injections into Object-based format
  */
+// 规范化inject字段
+// 规范为结果格式：
+// inject:{injectName:{from:provideName,default:xxx,......}}
 function normalizeInject(options: Record<string, any>, vm?: Component | null) {
   const inject = options.inject
   if (!inject) return
@@ -374,6 +380,9 @@ function normalizeInject(options: Record<string, any>, vm?: Component | null) {
 /**
  * Normalize raw function directives into object format.
  */
+// 规范化directives字段
+// 规范为结果格式：
+// directives:{name:{bind:xxx,update:xxx}}
 function normalizeDirectives(options: Record<string, any>) {
   const dirs = options.directives
   if (dirs) {
@@ -405,6 +414,7 @@ export function mergeOptions(
   child: Record<string, any>,
   vm?: Component | null
 ): ComponentOptions {
+  // 验证子选项中的components字段中组件名是否合法
   if (__DEV__) {
     checkComponents(child)
   }
@@ -414,6 +424,7 @@ export function mergeOptions(
     child = child.options
   }
 
+  // 对子节点的字段进行规范化,都处理为详细对象写法
   normalizeProps(child, vm)
   normalizeInject(child, vm)
   normalizeDirectives(child)
@@ -422,17 +433,20 @@ export function mergeOptions(
   // but only if it is a raw options object that isn't
   // the result of another mergeOptions call.
   // Only merged options has the _base property.
+  // 已经被合并过的对象都会带上根组件Vue.options._base，避免组件之间重复的调用
   if (!child._base) {
+    // 好像是单文件组件会使用，和混入使用相同，相当于混入的其中一项
     if (child.extends) {
       parent = mergeOptions(parent, child.extends, vm)
     }
+    // 混入mixins的实现
     if (child.mixins) {
       for (let i = 0, l = child.mixins.length; i < l; i++) {
         parent = mergeOptions(parent, child.mixins[i], vm)
       }
     }
   }
-
+  // 根据策略合并字段
   const options: ComponentOptions = {} as any
   let key
   for (key in parent) {
@@ -455,6 +469,8 @@ export function mergeOptions(
  * This function is used because child instances need access
  * to assets defined in its ancestor chain.
  */
+// 返回options上对应类型对应属性名的资源
+// 对于components返回对应的子类构造函数
 export function resolveAsset(
   options: Record<string, any>,
   type: string,
@@ -466,13 +482,15 @@ export function resolveAsset(
     return
   }
   const assets = options[type]
-  // check local registration variations first
+  // check local registration variations firstming
+  // 查询对象上是否有对应属性名(包括驼峰命名和大写命名)的资源
   if (hasOwn(assets, id)) return assets[id]
   const camelizedId = camelize(id)
   if (hasOwn(assets, camelizedId)) return assets[camelizedId]
   const PascalCaseId = capitalize(camelizedId)
   if (hasOwn(assets, PascalCaseId)) return assets[PascalCaseId]
   // fallback to prototype chain
+  // 查询原型链上是否有对应属性名的资源
   const res = assets[id] || assets[camelizedId] || assets[PascalCaseId]
   if (__DEV__ && warnMissing && !res) {
     warn('Failed to resolve ' + type.slice(0, -1) + ': ' + id)

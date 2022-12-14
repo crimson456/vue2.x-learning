@@ -13,11 +13,14 @@ import {
   convertEnumeratedValue
 } from 'web/util/index'
 
+// 更新DOM元素上的属性
 function updateAttrs(oldVnode: VNodeWithData, vnode: VNodeWithData) {
   const opts = vnode.componentOptions
+  // 似乎是测试的新特性
   if (isDef(opts) && opts.Ctor.options.inheritAttrs === false) {
     return
   }
+  // 新旧节点都没有定义属性则返回
   if (isUndef(oldVnode.data.attrs) && isUndef(vnode.data.attrs)) {
     return
   }
@@ -26,10 +29,12 @@ function updateAttrs(oldVnode: VNodeWithData, vnode: VNodeWithData) {
   const oldAttrs = oldVnode.data.attrs || {}
   let attrs: any = vnode.data.attrs || {}
   // clone observed objects, as the user probably wants to mutate it
+  // ???
   if (isDef(attrs.__ob__) || isTrue(attrs._v_attr_proxy)) {
     attrs = vnode.data.attrs = extend({}, attrs)
   }
 
+  // 设置新值
   for (key in attrs) {
     cur = attrs[key]
     old = oldAttrs[key]
@@ -43,6 +48,7 @@ function updateAttrs(oldVnode: VNodeWithData, vnode: VNodeWithData) {
   if ((isIE || isEdge) && attrs.value !== oldAttrs.value) {
     setAttr(elm, 'value', attrs.value)
   }
+  // 删除新值中没有的旧值
   for (key in oldAttrs) {
     if (isUndef(attrs[key])) {
       if (isXlink(key)) {
@@ -54,6 +60,8 @@ function updateAttrs(oldVnode: VNodeWithData, vnode: VNodeWithData) {
   }
 }
 
+// 设置DOM元素对应属性名的属性值
+// 此处主要做了不同类型的属性的兼容问题，如某些属性只能是枚举值，布尔值
 function setAttr(el: Element, key: string, value: any, isInPre?: any) {
   if (isInPre || el.tagName.indexOf('-') > -1) {
     baseSetAttr(el, key, value)
@@ -81,6 +89,7 @@ function setAttr(el: Element, key: string, value: any, isInPre?: any) {
   }
 }
 
+// 设置DOM元素上对应属性名的属性，处理了ie兼容性的问题
 function baseSetAttr(el, key, value) {
   if (isFalsyAttrValue(value)) {
     el.removeAttribute(key)

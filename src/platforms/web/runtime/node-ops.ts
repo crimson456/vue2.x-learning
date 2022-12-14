@@ -1,3 +1,6 @@
+// 此文件中主要是原生DOM方法的封装
+
+
 import VNode from 'core/vdom/vnode'
 import { namespaceMap } from 'web/util/index'
 

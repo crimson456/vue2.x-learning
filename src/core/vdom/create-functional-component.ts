@@ -18,6 +18,7 @@ import {
 import type { Component } from 'types/component'
 import type { VNodeData } from 'types/vnode'
 
+// 创建函数式组件render的上下文
 export function FunctionalRenderContext(
   data: VNodeData,
   props: Object,
@@ -29,10 +30,14 @@ export function FunctionalRenderContext(
   // ensure the createElement function in functional components
   // gets a unique context - this is necessary for correct named slot check
   let contextVm
+  // 此处判断确保contextVm是Vue实例
+  // 父元素为Vue实例的情况
   if (hasOwn(parent, '_uid')) {
     contextVm = Object.create(parent)
     contextVm._original = parent
-  } else {
+  } 
+  // 父元素也为函数式组件的情况
+  else {
     // the context vm passed in is a functional context as well.
     // in this case we want to make sure we are able to get a hold to the
     // real context instance.
@@ -40,9 +45,11 @@ export function FunctionalRenderContext(
     // @ts-ignore
     parent = parent._original
   }
+  // 用于对编译过了的单文件组件<template functional></template>写法作支持
   const isCompiled = isTrue(options._compiled)
   const needNormalization = !isCompiled
 
+  // 初始化上下文对象中的状态属性
   this.data = data
   this.props = props
   this.children = children
@@ -97,6 +104,7 @@ export function FunctionalRenderContext(
 
 installRenderHelpers(FunctionalRenderContext.prototype)
 
+// 创建函数式组件,返回函数式组件的render函数调用后生成的节点
 export function createFunctionalComponent(
   Ctor: typeof Component,
   propsData: Object | undefined,
@@ -107,15 +115,23 @@ export function createFunctionalComponent(
   const options = Ctor.options
   const props = {}
   const propOptions = options.props
+  // 函数式组件定义时的选项添加了props的情况
   if (isDef(propOptions)) {
+    // 查询定义的props
     for (const key in propOptions) {
+      // 获取props的值(没有则使用默认值)，并进行类型检测
       props[key] = validateProp(key, propOptions, propsData || emptyObject)
     }
-  } else {
+  } 
+  // 函数式组件定义时的选项没有添加props的情况
+  // 定义时不添加props字段会直接将所有属性都添加context的props下
+  else {
+    // 从data下的attrs、props字段获取对应字段的值
+    // 注意data下的props字段表示某些必须使用DOM的js属性，props和propsData中的props表示组件中获取的属性
     if (isDef(data.attrs)) mergeProps(props, data.attrs)
     if (isDef(data.props)) mergeProps(props, data.props)
   }
-
+  // 创建函数式组件的上下文
   const renderContext = new FunctionalRenderContext(
     data,
     props,
@@ -123,9 +139,11 @@ export function createFunctionalComponent(
     contextVm,
     Ctor
   )
-
+  // 用renderContext作参数调用函数式组件的render函数
   const vnode = options.render.call(null, renderContext._c, renderContext)
 
+  // 返回render调用结果的克隆的节点,并挂载fnContext和fnOptions
+  // 如果是节点数组,则对每一项都调用
   if (vnode instanceof VNode) {
     return cloneAndMarkFunctionalResult(
       vnode,
@@ -150,6 +168,7 @@ export function createFunctionalComponent(
   }
 }
 
+// 克隆函数式组件render调用的结果节点,并且重新赋值data.slot的值
 function cloneAndMarkFunctionalResult(
   vnode,
   data,
@@ -167,6 +186,7 @@ function cloneAndMarkFunctionalResult(
     ;(clone.devtoolsMeta = clone.devtoolsMeta || ({} as any)).renderContext =
       renderContext
   }
+  // 此处的slot值代表组件标签上slot属性值
   if (data.slot) {
     ;(clone.data || (clone.data = {})).slot = data.slot
   }

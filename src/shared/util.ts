@@ -345,6 +345,7 @@ export function looseIndexOf(arr: Array<unknown>, val: unknown): number {
 /**
  * Ensure a function is called only once.
  */
+// 用闭包添加一个布尔值确保函数只执行一次
 export function once<T extends (...args: any[]) => any>(fn: T): T {
   let called = false
   return function () {

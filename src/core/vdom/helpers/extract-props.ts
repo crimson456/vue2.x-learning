@@ -9,6 +9,10 @@ import {
 import type { Component } from 'types/component'
 import type { VNodeData } from 'types/vnode'
 
+
+// 遍历options.props，在data对象下的attrs、props字段对应值，并返回结果对象
+// eg.  组件定义时:  props:['a','b','c']     ---->       返回值为   {a:xxx,b:xxx,c:xxx}
+// 并且对驼峰命名做了兼容，对小写形式做了警告
 export function extractPropsFromVNodeData(
   data: VNodeData,
   Ctor: typeof Component,
@@ -24,6 +28,7 @@ export function extractPropsFromVNodeData(
   const res = {}
   const { attrs, props } = data
   if (isDef(attrs) || isDef(props)) {
+    // 遍历options.props中的每一个值
     for (const key in propOptions) {
       const altKey = hyphenate(key)
       if (__DEV__) {
@@ -42,6 +47,7 @@ export function extractPropsFromVNodeData(
           )
         }
       }
+      // 将props和attrs中对应的key或altkey的只放入res中，props中保留对应字段，attrs中删除
       checkProp(res, props, key, altKey, true) ||
         checkProp(res, attrs, key, altKey, false)
     }
@@ -49,6 +55,7 @@ export function extractPropsFromVNodeData(
   return res
 }
 
+// 将hash中对应key或altKey的字段存入res中，第五个参数表示是否在原hash对象中保留对应字段
 function checkProp(
   res: Object,
   hash: Object | undefined,

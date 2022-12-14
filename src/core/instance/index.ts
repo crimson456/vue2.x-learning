@@ -28,7 +28,7 @@ stateMixin(Vue)
 //@ts-expect-error Vue has function type
 eventsMixin(Vue)
 
-//lifecycleMixin： _update、$forceUpdate、$destroy、$emit
+//lifecycleMixin： _update、$forceUpdate、$destroy
 //@ts-expect-error Vue has function type
 lifecycleMixin(Vue)
 
